@@ -1,18 +1,23 @@
-SRC_MODULES := \
+SOURCES_MODULES := \
 	AbstractStencil \
 	HoareLogic \
-	DistrKernel
-SRC_VS := $(SRC_MODULES:%=src/%.v)
+	DistrKernel \
+	Verification
+SOURCES_VS  := $(SOURCES_MODULES:%=sources/%.v)
+SOURCES_VOS := $(SOURCES_MODULES:%=sources/%.vo)
 
-.PHONY: src clean
+EXAMPLES_MODULES := \
+	First
+EXAMPLES_VS  := $(EXAMPLES_MODULES:%=examples/%.v)
+EXAMPLES_VOS := $(EXAMPLES_MODULES:%=examples/%.vo)
 
-src: Makefile.coq
-	$(MAKE) -f Makefile.coq
+.PHONY: sources examples
 
-Makefile.coq: Makefile $(SRC_VS)
-	coq_makefile -R src Stencils $(SRC_VS) -o Makefile.coq
+sources: $(SOURCES_VOS)
 
+examples: $(EXAMPLES_VOS)
 
-clean:: Makefile.coq
-	$(MAKE) -f Makefile.coq clean
-	rm -f Makefile.coq
+Makefile.coq: Makefile $(SOURCES_VS) $(EXAMPLES_VS)
+	coq_makefile -R sources StLib -R examples StExamples $(SOURCES_VS) $(EXAMPLES_VS) -o Makefile.coq
+
+-include Makefile.coq
