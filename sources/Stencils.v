@@ -64,16 +64,32 @@ Section Refinement.
   Definition valid (A B : group) : Prop :=
     B ∈ closure ⎨A⎬.
 
-  (** XXX: I do not believe these proofs should be fully automated yet.  It
-   * would be nice to have a few tactics to make the process smoother, though.
-   *)
+  (** XXX: This is ugly! *)
 
   Lemma boundary_bin_union :
     forall P Q A B, P ⊆ boundary A -> Q ⊆ boundary B ->
-                    P ∪ Q ⊆ boundary A ∪ boundary B.
+                    P ∪ Q ⊆ boundary (A ∪ B).
   Proof.
     unfold boundary; intros P Q A B HP HQ.
-  Admitted.
+    apply union_subset.
+    intros x Hx.
+    destruct HP with x.
+    assumption.
+    unfold extension; red.
+    split. assumption.
+    intros.
+    apply union_is_in_l.
+    now apply H0.
+
+    intros x Hx.
+    destruct HQ with x.
+    assumption.
+    unfold extension; red.
+    split. assumption.
+    intros.
+    apply union_is_in_r.
+    now apply H0.
+  Qed.
 
   Lemma next_monotonic :
     forall (CC DD : set group),
@@ -88,7 +104,6 @@ Section Refinement.
     exists x1; intuition.
   Qed.
 
-  (** XXX: This is ugly! *)
   Lemma next_extensive :
     forall CC, CC ⊆ next CC.
   Proof.
@@ -124,8 +139,26 @@ Section Refinement.
   Proof.
     intros.
     intros A B Ha Hb.
-    unfold next.
-    eexists; split.
+    unfold next in *.
+    destruct Ha as [xa [[P [HP1 HP2]] Ha]]; subst.
+    destruct Ha as [R [HR1 HR2]]; subst.
+    destruct Hb as [xb [[Q [HQ1 HQ2]] Hb]]; subst.
+    destruct Hb as [T [HT1 HT2]]; subst.
+    exists (⎨((P ∪ Q) ∪ P0), (P0) ∈ (℘boundary (P ∪ Q))⎬).
+    split.
+    exists (P ∪ Q). split.
+    now apply H.
+    reflexivity.
+    replace ((P ∪ R) ∪ Q ∪ T) with ((P ∪ Q) ∪ (R ∪ T))
+      by admit. (* XXX: This is associativity & commutativity *)
+    exists (R ∪ T); split.
+    2: reflexivity.
+    now apply boundary_bin_union.
+  Qed.
+
+  Lemma iter_subset :
+    forall CC DD, CC ⊆ DD -> forall k, iter_next CC k ⊆ iter_next DD k.
+  Proof.
   Admitted.
 
   Lemma iter_in :
@@ -158,15 +191,21 @@ Section Refinement.
     * now apply next_union_closed.
   Qed.
 
-  Lemma iter_le :
-    forall n m CC, n <= m -> iter_next CC n ⊆ iter_next CC m.
+  Lemma nat_le_ind :
+    forall P : nat -> nat -> Prop,
+      (forall n, P n (S n)) ->
+      forall n m, n <= m -> P n m.
   Proof.
   Admitted.
 
-  (** XXX: This should be in the set library. *)
-  Lemma is_in_subset :
-    forall U x (A B : set U), x ∈ A -> A ⊆ B -> x ∈ B.
-  Proof. intuition. Qed.
+  Lemma iter_le :
+    forall n m, n <= m -> forall CC, iter_next CC n ⊆ iter_next CC m.
+  Proof.
+    apply (nat_le_ind
+             (fun n m =>
+                forall (CC : set group), iter_next CC n ⊆ iter_next CC m)).
+    intros; simpl; now apply next_extensive.
+  Qed.
 
   Lemma seq_weak {A B C} : valid A B -> valid B C -> valid A C.
   Proof.
@@ -182,8 +221,20 @@ Section Refinement.
     now apply iter_in.
   Qed.
 
-  Lemma valid_weaken {A B} C : valid A B -> valid (C ∪ A) B.
+  Lemma iter_append :
+    forall A B, next ⎨A⎬ ⊆ next ⎨B ∪ A⎬.
   Proof.
+  Admitted.
+
+  Lemma valid_weaken {A C} B : valid A C -> valid (B ∪ A) C.
+  Proof.
+    unfold valid, closure.
+    intro HC.
+    destruct HC as [? [[nc [Hnc ?]] HC]]; subst.
+    eexists; split.
+    exists nc; split.
+    unfold full, is_in; auto.
+    reflexivity.
   Admitted.
 
   Lemma par {A B C} : valid A B -> valid A C -> valid A (B ∪ C).
@@ -197,7 +248,13 @@ Section Refinement.
     split. intuition.
     reflexivity.
     apply iter_union_closed.
-    * admit.
+    * unfold union_closed; intros.
+      destruct H2; subst.
+      destruct H4; subst.
+      rewrite union_twice.
+      now left.
+      destruct H2.
+      destruct H2.
     * eapply is_in_subset; [eassumption|].
       apply iter_le.
       apply Max.le_max_l.
@@ -206,9 +263,19 @@ Section Refinement.
       apply Max.le_max_r.
   Qed.
 
-  Lemma valid_bin_union {A B} : valid A B -> valid A (A ∪ B).
+  Lemma nop {A} : valid A A.
   Proof.
-  Admitted.
+    unfold valid, closure.
+    eexists; split.
+    exists 0; split.
+    now unfold is_in, full.
+    reflexivity.
+    simpl.
+    now left.
+  Qed.
+
+  Lemma valid_bin_union {A B} : valid A B -> valid A (A ∪ B).
+  Proof. now apply par, nop. Qed.
 
   Lemma seq {A B C} : valid A B -> valid B C -> valid A (A ∪ B ∪ C).
   Proof.
@@ -217,8 +284,9 @@ Section Refinement.
     apply valid_weaken with A in H0.
     apply (@seq_weak A (A ∪ B)).
     assumption.
-(*    now apply valid_bin_union.
-  Qed.*)
-  Admitted.
+    replace (A ∪ B ∪ C) with ((A ∪ B) ∪ C)
+      by admit. (* XXX: this is just associativity! *)
+    now apply valid_bin_union.
+  Qed.
 
 End Refinement.
