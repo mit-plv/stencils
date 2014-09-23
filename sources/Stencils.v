@@ -2,7 +2,8 @@
 (* Stencils                                                                  *)
 (* ========================================================================= *)
 
-Require Import Sets Monoids List.
+Require Import Sets Monoids Misc.
+Require Import List.
 Import ListNotations.
 Local Open Scope set_scope.
 
@@ -22,7 +23,7 @@ Class Stencil {cell : Type} {add : cell -> cell -> cell} {zero : cell}
 Section Refinement.
   Generalizable Variables cell add zero.
   Context `{M : CommMonoid cell add zero}.
-  Context `{St : @Stencil _ _ _ M}.
+  Context `(St : @Stencil _ _ _ M).
   Local Open Scope monoid.
 
   (** The actual spacetime into which the stencil code is executed. *)
@@ -31,12 +32,11 @@ Section Refinement.
   Definition sp : group :=
     space ×〚 0, nb_iter-1 〛.
 
-  (** Dependency relation between two cells in [real_space]. *)
+  (** Dependency relation between two cells in [sp]. *)
 
   Inductive neighbor : (cell * time) -> (cell * time) -> Prop :=
   | Neighb :
       forall (n c : cell) (t : time),
-(*        (c + n) ∈ space -> (c + center) ∈ space ->*)
         In n pattern -> neighbor (c + n, t) (c + center, 1+t).
   Notation "c1 → c2" := (neighbor c1 c2) (at level 80).
 
@@ -64,7 +64,7 @@ Section Refinement.
   Definition valid (A B : group) : Prop :=
     B ∈ closure ⎨A⎬.
 
-  (** XXX: This is ugly! *)
+  (** XXX: These proofs are somewhat ugly! *)
 
   Lemma boundary_bin_union :
     forall P Q A B, P ⊆ boundary A -> Q ⊆ boundary B ->
@@ -156,11 +156,6 @@ Section Refinement.
     now apply boundary_bin_union.
   Qed.
 
-  Lemma iter_subset :
-    forall CC DD, CC ⊆ DD -> forall k, iter_next CC k ⊆ iter_next DD k.
-  Proof.
-  Admitted.
-
   Lemma iter_in :
     forall A CC, A ∈ CC -> forall k, iter_next ⎨A⎬ k ⊆ iter_next CC k.
   Proof.
@@ -191,13 +186,6 @@ Section Refinement.
     * now apply next_union_closed.
   Qed.
 
-  Lemma nat_le_ind :
-    forall P : nat -> nat -> Prop,
-      (forall n, P n (S n)) ->
-      forall n m, n <= m -> P n m.
-  Proof.
-  Admitted.
-
   Lemma iter_le :
     forall n m, n <= m -> forall CC, iter_next CC n ⊆ iter_next CC m.
   Proof.
@@ -207,7 +195,7 @@ Section Refinement.
     intros; simpl; now apply next_extensive.
   Qed.
 
-  Lemma seq_weak {A B C} : valid A B -> valid B C -> valid A C.
+  Lemma bin_seq {A B C} : valid A B -> valid B C -> valid A C.
   Proof.
     intros Hb Hc.
     unfold valid, closure.
@@ -220,22 +208,6 @@ Section Refinement.
     rewrite iter_morphism.
     now apply iter_in.
   Qed.
-
-  Lemma iter_append :
-    forall A B, next ⎨A⎬ ⊆ next ⎨B ∪ A⎬.
-  Proof.
-  Admitted.
-
-  Lemma valid_weaken {A C} B : valid A C -> valid (B ∪ A) C.
-  Proof.
-    unfold valid, closure.
-    intro HC.
-    destruct HC as [? [[nc [Hnc ?]] HC]]; subst.
-    eexists; split.
-    exists nc; split.
-    unfold full, is_in; auto.
-    reflexivity.
-  Admitted.
 
   Lemma par {A B C} : valid A B -> valid A C -> valid A (B ∪ C).
   Proof.
@@ -274,19 +246,20 @@ Section Refinement.
     now left.
   Qed.
 
-  Lemma valid_bin_union {A B} : valid A B -> valid A (A ∪ B).
+  Lemma append {A B} : valid A B -> valid A (A ∪ B).
   Proof. now apply par, nop. Qed.
 
-  Lemma seq {A B C} : valid A B -> valid B C -> valid A (A ∪ B ∪ C).
+  (** Not quite as nice as we might get, right? *)
+  Lemma seq {A B f} :
+    forall a b,
+      a <= b -> (f a) = A -> (f b) = B ->
+      (forall i, a <= i < b -> valid (f i) (f (1+i))) -> valid A B.
   Proof.
     intros.
-    apply valid_bin_union in H.
-    apply valid_weaken with A in H0.
-    apply (@seq_weak A (A ∪ B)).
-    assumption.
-    replace (A ∪ B ∪ C) with ((A ∪ B) ∪ C)
-      by admit. (* XXX: this is just associativity! *)
-    now apply valid_bin_union.
+    rewrite <- H0, <- H1.
+    apply refl_trans_finite; try assumption.
+    intro; apply nop.
+    repeat intro; now apply @bin_seq with y.
   Qed.
 
 End Refinement.

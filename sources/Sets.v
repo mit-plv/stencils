@@ -107,30 +107,87 @@ Qed.
 
   (** XXX: Clean this up! *)
 
-  Lemma is_in_subset :
-    forall U x (A B : set U), x ∈ A -> A ⊆ B -> x ∈ B.
-  Proof. intuition. Qed.
+Lemma is_in_subset :
+  forall U x (A B : set U), x ∈ A -> A ⊆ B -> x ∈ B.
+Proof. intuition. Qed.
 
-  Lemma union_subset :
-    forall U (P Q A : set U), P ⊆ A -> Q ⊆ A -> P ∪ Q ⊆ A.
-  Proof.
-  Admitted.
+Lemma union_subset :
+  forall U (P Q A : set U), P ⊆ A -> Q ⊆ A -> P ∪ Q ⊆ A.
+Proof.
+  intros.
+  intros x [? [[?|[?|?]] ?]]; subst.
+  now apply H.
+  now apply H0.
+  destruct H1.
+Qed.
 
-  Lemma union_is_in_l :
-    forall U (A B : set U) (x : U), x ∈ A -> x ∈ A ∪ B.
-  Proof.
-  Admitted.
+Lemma union_is_in_l :
+  forall U (A B : set U) (x : U), x ∈ A -> x ∈ A ∪ B.
+Proof.
+  intros.
+  exists A; split; [now left | assumption].
+Qed.
 
-  Lemma union_is_in_r :
-    forall U (A B : set U) (x : U), x ∈ B -> x ∈ A ∪ B.
-  Proof.
-  Admitted.
+Lemma union_is_in_r :
+  forall U (A B : set U) (x : U), x ∈ B -> x ∈ A ∪ B.
+Proof.
+  intros.
+  exists B; split; [right; now left | assumption].
+Qed.
 
-  Lemma union_twice :
-    forall U (A : set U), A ∪ A = A.
-  Proof.
-  Admitted.
+Lemma union_twice :
+  forall U (A : set U), A ∪ A = A.
+Proof.
+  intros.
+  apply same_eq; split; intros.
+  destruct H as [? [[?|[?|?]] ?]]; subst; try assumption.
+  destruct H.
+  exists A; split; [now left | assumption].
+Qed.
 
+Lemma union_assoc :
+  forall U (A B C : set U), (A ∪ B) ∪ C = A ∪ (B ∪ C).
+Proof.
+  intros.
+  apply same_eq.
+  split; intros.
+  destruct H as [? [[?|?] ?]]; subst.
+  destruct H0 as [? [[?|?] ?]]; subst.
+  exists x0; split; [now left | assumption].
+  exists (B ∪ C); split. right; now left.
+  exists B; split; [now left | destruct H; now subst].
+  exists (B ∪ C); split. right; now left.
+  exists C; split; [right; now left | destruct H; now subst].
+
+  destruct H as [? [[?|?] ?]]; subst.
+  exists (x0 ∪ B); split. now left.
+  exists x0; split; [now left | assumption].
+  destruct H; subst; [| destruct H].
+  destruct H0 as [? [? ?]].
+  destruct H as [?|[?|?]]; subst.
+  exists (A ∪ x0); split; [now left|].
+  exists x0; split; [right; now left | assumption].
+  exists x0; split; [right; now left | assumption].
+  destruct H.
+Qed.
+
+Lemma union_comm :
+  forall U (A B : set U), A ∪ B = B ∪ A.
+Proof.
+  intros.
+  apply same_eq; split; intros.
+  destruct H as [? [[?|?] ?]]; subst.
+  exists x0; split; [right; now left | assumption].
+  destruct H; subst.
+  exists x0; split; [now left | assumption].
+  destruct H.
+
+  destruct H as [? [[?|?] ?]]; subst.
+  exists x0; split; [right; now left | assumption].
+  destruct H; subst.
+  exists x0; split; [now left | assumption].
+  destruct H.
+Qed.
 
 (** Tactics to handle set equality/equivalence in goals *)
 

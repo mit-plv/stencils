@@ -1,7 +1,8 @@
 SOURCES_MODULES := \
 	Sets \
 	Monoids \
-	Stencils
+	Stencils \
+	Misc
 SOURCES_VS  := $(SOURCES_MODULES:%=sources/%.v)
 SOURCES_VOS := $(SOURCES_MODULES:%=sources/%.vo)
 

@@ -34,3 +34,16 @@ Section ClassicalStencils.
     center  := (1,1)
   }.
 End ClassicalStencils.
+
+Section VN1D.
+  Variables n : nat.
+
+  Definition VN1D := VonNeumann1D (2 * n) n.
+  Definition valid_strategy :
+    valid VN1D ∅ (sp VN1D).
+
+    unfold VN1D at 2; unfold sp, space, VonNeumann1D, nb_iter.
+
+    (*apply seq with (⋃ ⎨〚i, 2 * n - 1 - i〛× ⎨i⎬, i ∈ 〚0, n - 1〛⎬).*)
+  Abort.
+End VN1D.
