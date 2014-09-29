@@ -1,26 +1,12 @@
 (* ========================================================================= *)
-(* Stencils                                                                  *)
+(* Abstract validity predicate                                               *)
 (* ========================================================================= *)
 
-Require Import Sets Monoids Misc.
+Require Import Common.Stencils Common.Sets Common.Monoids Common.Misc.
 Require Import List.
-Import ListNotations.
 Local Open Scope set_scope.
 
-Definition time := nat.
-
-(** XXX: Describe this data structure. *)
-
-Class Stencil {cell : Type} {add : cell -> cell -> cell} {zero : cell}
-  `(CommMonoid cell add zero) :=
-{
-  space : set cell;
-  nb_iter : time;
-  pattern : list cell;
-  center : cell
-}.
-
-Section Refinement.
+Section Valid.
   Generalizable Variables cell add zero.
   Context `{M : CommMonoid cell add zero}.
   Context `(St : @Stencil _ _ _ M).
@@ -207,7 +193,7 @@ Section Refinement.
 
   (** Level 4: Combinators. *)
 
-  Lemma seq {A C} B : valid A B -> valid B C -> valid A C.
+  Lemma sequ {A C} B : valid A B -> valid B C -> valid A C.
   Proof.
     intros Hb Hc.
     unfold valid, closure.
@@ -275,7 +261,7 @@ Section Refinement.
     rewrite <- H0, <- H1.
     apply refl_trans_finite; try assumption.
     intro; apply nop.
-    repeat intro; now apply @seq with y.
+    repeat intro; now apply @sequ with y.
   Qed.
 
   Lemma loop {A B}:
@@ -288,10 +274,10 @@ Section Refinement.
       valid A (⋃ ⎨B i, i ∈〚a, b〛⎬).
   Proof.
     intros.
-    apply (seq (B a)); [assumption|].
+    apply (sequ (B a)); [assumption|].
     apply
       (@loop' (B a) _  (fun k => ⋃⎨B i, i ∈〚a, k 〛⎬) a b);
       try firstorder.
     apply union_singleton.
   Qed.
-End Refinement.
+End Valid.

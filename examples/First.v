@@ -1,6 +1,4 @@
-Require Import List Sets Monoids Stencils.
-Local Open Scope set_scope.
-Import ListNotations.
+Require Import StLib.Core.
 
 (** Let us define a few classical stencils that are used in practice. *)
 
@@ -86,7 +84,7 @@ Section VN1D.
   Proof.
     unfold VN1D at 2; unfold sp, space, VonNeumann1D, nb_iter.
 
-    apply seq with (⋃ ⎨〚i, 2 * n - 1 - i〛× ⎨i⎬, i ∈ 〚0, n - 1〛⎬).
+    apply sequ with (⋃ ⎨〚i, 2 * n - 1 - i〛× ⎨i⎬, i ∈ 〚0, n - 1〛⎬).
     apply loop.
     + omega.
     + unfold valid, closure.

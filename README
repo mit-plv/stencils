@@ -1,0 +1,43 @@
+********************************************************************************
+* ABOUT STLIB
+********************************************************************************
+
+  StLib is a verification framework for stencil code written in Coq.  This is
+work in progress and pretty much everything is doomed to change at some point,
+including the name of the project.
+
+********************************************************************************
+* COMPILING STLIB
+********************************************************************************
+
+To compile the library itself:
+ $ make sources
+To compile the examples:
+ $ make examples
+Or, to do both:
+ $ make
+
+  Be careful, the Makefile is not very robust yet.  To remove all binaries and
+get a clean directory, run:
+ $ make cleanup
+(and *not* make clean, we want to get rid of Makefile.coq as well)
+ 
+********************************************************************************
+* SOURCE HIERARCHY 
+********************************************************************************
+
+  For now, it looks like this:
+.
+├── examples
+│   └── First.v           -> A simple example of how to use the current library
+├── Makefile
+├── README
+└── sources
+    ├── Abstract
+    │   └── Semantics.v   -> The abstract operational semantics
+    ├── Common
+    │   ├── Misc.v        -> Random lemmas that did not fit anywhere else
+    │   ├── Monoids.v     -> Formalization of Monoids, and a few instances
+    │   ├── Sets.v        -> Simple set theory with fancy notations and tactics
+    │   └── Stencils.v    -> Definition of stencils
+    └── Core.v
