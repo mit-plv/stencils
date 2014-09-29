@@ -97,6 +97,11 @@ Definition segment (x y : nat) : set nat :=
 Notation "〚 x , y 〛" := (segment x y) (at level 0) : set_scope.
 
 
+(** [singleton A] is true if and only if [A] contains exactly one element. *)
+
+Definition singleton {U} (A : set U) :=
+  exists x, forall y, y ∈ A -> y = x.
+
 (** A couple tactics to deal with set-theoretic proofs.  They are intended to be
  * used with firstorder. *)
 

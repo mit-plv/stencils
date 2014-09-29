@@ -313,3 +313,6 @@ Section Valid.
     now rewrite union_singleton.
   Qed.
 End Valid.
+
+Notation "A '⟿' B '//' S" :=
+  (valid S A B) (at level 100) : sem_scope.

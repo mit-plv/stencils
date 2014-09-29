@@ -39,10 +39,6 @@ Section VN1D.
 
   Definition VN1D := VonNeumann1D (2 * n) n.
 
-  Check (Spawn Node i ∈〚0, n〛
-               With
-               Compute 〚0, 0〛× ⎨i⎬).
-
   Lemma compute_row :
     forall a b c d t,
       a <= b < 2 * n -> 1 + t <= n - 1 ->
@@ -69,7 +65,7 @@ Section VN1D.
       eauto with arith.
   Qed.
 
-  Definition valid_strategy :
+(*  Definition valid_strategy :
     valid VN1D ∅ (sp VN1D).
   Proof.
     unfold VN1D at 2; unfold sp, space, VonNeumann1D, nb_iter.
@@ -108,5 +104,5 @@ Section VN1D.
       destruct H1.
     +
   Abort.
-
+*)
 End VN1D.
