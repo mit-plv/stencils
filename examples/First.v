@@ -45,6 +45,21 @@ Section VN1D.
       valid VN1D (〚a, b〛 × ⎨t⎬)
             (〚a, b〛 × ⎨t⎬ ∪〚c, d〛 × ⎨1+t⎬).
   Proof.
+(*    intros; unfold valid, closure.
+    union with 1; simpl.
+    unfold next.
+    union with (〚a, b〛 × ⎨t⎬).
+    left; set eq simpl; firstorder.
+    image with (〚c, d 〛 × ⎨1 + t⎬).
+    unfold boundary.
+    sets red; sets simpl.
+    unfold sp, space, nb_iter, VN1D, VonNeumann1D.
+    admit.
+
+    intros.
+    inversion H5; clear H5.
+    unfold pattern, VN1D, VonNeumann1D, sp in *; simpl in *.
+    firstorder; subst; simpl in *.*)
   Admitted.
 
 (*  Lemma compute_row :

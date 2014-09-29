@@ -143,7 +143,7 @@ Tactic Notation "image" "with" constr(x) :=
   progress
     (sets red;
      match goal with
-       | [ |- @image _ _ _ _ _] => exists x; split; [sets simpl|]
+       | [ |- @image _ _ _ _ _] => exists x; split; sets simpl; try reflexivity
      end).
 
 Lemma union_image :

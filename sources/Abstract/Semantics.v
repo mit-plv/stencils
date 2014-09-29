@@ -226,6 +226,32 @@ Section Valid.
       apply Max.le_max_r.
   Qed.
 
+  Lemma par' :
+    forall A B k a,
+      (forall i, a <= i <= a + k -> valid A (B i)) -> valid A (⋃⎨B i, i ∈〚a, a+k〛⎬).
+  Proof.
+    induction k; intros.
+    + rewrite <- plus_n_O, union_singleton.
+      apply H; omega.
+    + replace (a + S k)%nat with (1 + (a + k))%nat by omega.
+      rewrite <- union_segment by omega.
+      apply split.
+      * apply IHk.
+        intros; apply H; omega.
+      * apply H; omega.
+  Qed.
+
+  Lemma par :
+    forall A B a b,
+      a <= b ->
+      (forall i, a <= i <= b -> valid A (B i)) -> valid A (⋃⎨B i, i ∈〚a, b〛⎬).
+  Proof.
+    intros.
+    replace b with (a + (b - a)) by eauto with arith.
+    apply par'.
+    intros; apply H0; omega.
+  Qed.
+
   Lemma focus' A B C :
     valid A B -> A ⊆ C -> valid C (C ∪ B).
   Proof.
