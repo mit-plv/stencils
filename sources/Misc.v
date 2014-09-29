@@ -1,11 +1,21 @@
 Require Import Relations Omega.
 
 Lemma nat_le_ind :
-  forall P : nat -> nat -> Prop,
+  forall P,
+    reflexive nat P -> transitive nat P ->
     (forall n, P n (S n)) ->
     forall n m, n <= m -> P n m.
 Proof.
-Admitted.
+  intros.
+  assert (forall k, P n (n + k)).
+  + induction k.
+    * now rewrite <- plus_n_O.
+    * replace (n + S k) with (S (n + k)) by omega.
+      unfold transitive in H0.
+      now apply H0 with (n + k).
+  + replace m with (n + (m - n)) by omega.
+    now apply H3.
+Qed.
 
 Lemma refl_trans_finite_weak :
   forall U (R : relation U),

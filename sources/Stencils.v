@@ -34,21 +34,35 @@ Section Refinement.
 
   (** Dependency relation between two cells in [sp]. *)
 
-  Inductive neighbor : (cell * time) -> (cell * time) -> Prop :=
-  | Neighb :
+  Inductive depends : (cell * time) -> (cell * time) -> Prop :=
+  | Depends :
       forall (n c : cell) (t : time),
-        In n pattern -> neighbor (c + n, t) (c + center, 1+t).
-  Notation "c1 → c2" := (neighbor c1 c2) (at level 80).
+        In n pattern -> depends (c + n, t) (c + center, 1+t).
+  Notation "c1 → c2" := (depends c1 c2) (at level 80).
 
-  (** One-step closure *)
+  (** Here is the main, abstract formulation of correctness:
+   *
+   *  - For a group of cells [B], [boundary B] is the immediate neighborhood of
+   * [B], that is, the set of those cells whose value can be computed provided
+   * that the values of all cells in [B] are known;
+   *  - [next] describes valid computation steps.  For a given collection of
+   * sets [CC], [next CC] is the collection of those sets for which there is a
+   * valid scheduling of computations from at least one set in [CC];
+   *  - [iter_next CC n] is the collection of those sets that can be reached
+   * from some set in [CC] after [n] (valid) steps;
+   *  - [closure CC] is the collection of those sets that can be reached from
+   * some set in [CC] after any finite number of steps.
+   *
+   *   Finally, the [valid] predicates captures the following idea: [valid A B]
+   * holds if and only if there exists a correct scheduling of computations
+   * allowing to go from [A] to [B].
+   *)
 
   Definition boundary (B : group) : group :=
-    ⎨y ∈ sp | forall x, x ∈ sp -> x → y -> x ∈ B⎬.
+    (⎨y ∈ sp | forall x, x ∈ sp -> x → y -> x ∈ B⎬).
 
   Definition next (CC : set group) : set group :=
     ⋃ ⎨⎨B ∪ P, P ∈ ℘ (boundary B)⎬, B ∈ CC⎬.
-
-  (** Infinite-time closure *)
 
   Fixpoint iter_next (CC : set group) (n : nat) : set group :=
     match n with
@@ -59,76 +73,29 @@ Section Refinement.
   Definition closure (CC : set group) : set group :=
     ⋃ ⎨iter_next CC n, n ∈ ⟨nat⟩⎬.
 
-  (** XXX: Describe this system. *)
-
   Definition valid (A B : group) : Prop :=
-    B ∈ closure ⎨A⎬.
+    B ∈ closure (⎨A⎬).
 
-  (** XXX: These proofs are somewhat ugly! *)
+  (** A bunch of intermediate results used in the main combinators described
+   * below. *)
 
   Lemma boundary_bin_union :
     forall P Q A B, P ⊆ boundary A -> Q ⊆ boundary B ->
                     P ∪ Q ⊆ boundary (A ∪ B).
-  Proof.
-    unfold boundary; intros P Q A B HP HQ.
-    apply union_subset.
-    intros x Hx.
-    destruct HP with x.
-    assumption.
-    unfold extension; red.
-    split. assumption.
-    intros.
-    apply union_is_in_l.
-    now apply H0.
-
-    intros x Hx.
-    destruct HQ with x.
-    assumption.
-    unfold extension; red.
-    split. assumption.
-    intros.
-    apply union_is_in_r.
-    now apply H0.
-  Qed.
+  Proof. firstorder. Qed.
 
   Lemma next_monotonic :
     forall (CC DD : set group),
       CC ⊆ DD -> next CC ⊆ next DD.
-  Proof.
-    intros.
-    unfold subset; intros.
-    unfold next in *.
-    destruct H0.
-    exists x0; intuition.
-    destruct H1.
-    exists x1; intuition.
-  Qed.
+  Proof. firstorder. Qed.
 
   Lemma next_extensive :
     forall CC, CC ⊆ next CC.
   Proof.
-    intros. unfold next.
-    eexists.
-    split.
-    exists x.
-    split; auto.
-    exists ∅.
-    split.
-    repeat intro; destruct H0.
-    apply same_eq.
-    unfold union.
-    split.
-    intros.
-    exists x; intuition.
-    now constructor.
-    intros.
-    destruct H0.
-    destruct H0.
-    destruct H0; subst.
-    auto.
-    destruct H0; subst.
-    destruct H1.
-    destruct H0.
+    unfold next, subset; intros.
+    union with x.
+    image with (∅ : set (cell * time)); firstorder.
+    apply same_eq; firstorder.
   Qed.
 
   Definition union_closed {U} (CC : set (set U)) :=
@@ -144,46 +111,37 @@ Section Refinement.
     destruct Ha as [R [HR1 HR2]]; subst.
     destruct Hb as [xb [[Q [HQ1 HQ2]] Hb]]; subst.
     destruct Hb as [T [HT1 HT2]]; subst.
-    exists (⎨((P ∪ Q) ∪ P0), (P0) ∈ (℘boundary (P ∪ Q))⎬).
-    split.
-    exists (P ∪ Q). split.
-    now apply H.
-    reflexivity.
-    replace ((P ∪ R) ∪ Q ∪ T) with ((P ∪ Q) ∪ (R ∪ T))
-      by admit. (* XXX: This is associativity & commutativity *)
-    exists (R ∪ T); split.
-    2: reflexivity.
-    now apply boundary_bin_union.
+    union with (P ∪ Q). firstorder.
+    replace ((P ∪ R) ∪ Q ∪ T) with ((P ∪ Q) ∪ (R ∪ T)).
+    image with (R ∪ T); firstorder.
+    (* XXX: It would be probably worth doing something cleaner... *)
+    apply same_eq; firstorder.
   Qed.
 
   Lemma iter_in :
     forall A CC, A ∈ CC -> forall k, iter_next ⎨A⎬ k ⊆ iter_next CC k.
   Proof.
     intros A CC H; induction k.
-    unfold iter_next, subset.
-    intros. destruct H0; subst.
-    intuition.
-    destruct H0.
-    simpl.
-    now apply next_monotonic.
+    + unfold iter_next, subset.
+      firstorder; now subst.
+    + firstorder.
   Qed.
 
   Lemma iter_morphism :
     forall m n CC, iter_next CC (n + m) = iter_next (iter_next CC n) m.
   Proof.
     induction m.
-    simpl; intuition.
-    intros.
-    replace (n + S m)%nat with (S (n + m)) by omega; simpl.
-    now rewrite IHm.
+    + simpl; firstorder.
+    + intros; replace (n + S m)%nat with (S (n + m)) by omega; simpl.
+      now rewrite IHm.
   Qed.
 
   Lemma iter_union_closed :
     forall CC, union_closed CC -> forall n, union_closed (iter_next CC n).
   Proof.
     induction n; simpl.
-    * assumption.
-    * now apply next_union_closed.
+    + assumption.
+    + now apply next_union_closed.
   Qed.
 
   Lemma iter_le :
@@ -192,65 +150,77 @@ Section Refinement.
     apply (nat_le_ind
              (fun n m =>
                 forall (CC : set group), iter_next CC n ⊆ iter_next CC m)).
-    intros; simpl; now apply next_extensive.
+    + firstorder.
+    + firstorder.
+    + intros; simpl; now apply next_extensive.
   Qed.
 
-  Lemma bin_seq {A B C} : valid A B -> valid B C -> valid A C.
+  (** Combinators *)
+
+  Lemma seq {A C} B : valid A B -> valid B C -> valid A C.
   Proof.
     intros Hb Hc.
     unfold valid, closure.
     destruct Hb as [? [[nb [? ?]] ?]]; subst.
     destruct Hc as [? [[nc [? ?]] ?]]; subst.
-    exists (iter_next ⎨A⎬ (nb + nc)).
-    split. exists (nb + nc); intuition.
-    apply is_in_subset with (iter_next ⎨B⎬ nc).
-    assumption.
+
+    union with (nb + nc).
+    apply is_in_subset with (iter_next ⎨B⎬ nc); [assumption|].
     rewrite iter_morphism.
     now apply iter_in.
   Qed.
 
-  Lemma par {A B C} : valid A B -> valid A C -> valid A (B ∪ C).
+  Lemma split {A B C} : valid A B -> valid A C -> valid A (B ∪ C).
   Proof.
     intros Hb Hc.
     unfold valid, closure.
     destruct Hb as [? [[nb [? ?]] ?]]; subst.
     destruct Hc as [? [[nc [? ?]] ?]]; subst.
-    eexists; split.
-    exists (max nb nc).
-    split. intuition.
-    reflexivity.
+
+    union with (max nb nc).
     apply iter_union_closed.
-    * unfold union_closed; intros.
-      destruct H2; subst.
-      destruct H4; subst.
-      rewrite union_twice.
-      now left.
-      destruct H2.
-      destruct H2.
-    * eapply is_in_subset; [eassumption|].
+    + unfold union_closed; intros x y [?|?] [?|?]; firstorder.
+      subst x y; left.
+      now rewrite union_twice.
+    + eapply is_in_subset; [eassumption|].
       apply iter_le.
       apply Max.le_max_l.
-    * eapply is_in_subset; [eassumption|].
+    + eapply is_in_subset; [eassumption|].
       apply iter_le.
       apply Max.le_max_r.
   Qed.
 
+  Lemma bin_union_iter :
+    forall n A B C,
+      A ⊆ C -> A ∪ B ∈ iter_next ⎨A⎬ n -> C ∪ B ∈ iter_next ⎨C⎬ n.
+  Proof.
+    induction n; intros.
+    simpl in *.
+    destruct H0.
+    admit.
+    destruct H0.
+    simpl in *.
+    apply next_extensive.
+    apply IHn.
+    assumption. (* does not quiet work! *)
+  Admitted.
+
+  Lemma focus A B C:
+    valid A (A ∪ B) -> A ⊆ C -> valid C (C ∪ B).
+  Proof.
+    unfold valid, closure; intros.
+    destruct H as [? [[nb [? ?]] ?]]; subst.
+    union with nb.
+  Admitted.
+
+
   Lemma nop {A} : valid A A.
   Proof.
     unfold valid, closure.
-    eexists; split.
-    exists 0; split.
-    now unfold is_in, full.
-    reflexivity.
-    simpl.
-    now left.
+    union with (0 : nat); firstorder.
   Qed.
 
-  Lemma append {A B} : valid A B -> valid A (A ∪ B).
-  Proof. now apply par, nop. Qed.
-
-  (** Not quite as nice as we might get, right? *)
-  Lemma seq {A B f} :
+  Lemma loop' {A B f} :
     forall a b,
       a <= b -> (f a) = A -> (f b) = B ->
       (forall i, a <= i < b -> valid (f i) (f (1+i))) -> valid A B.
@@ -259,7 +229,23 @@ Section Refinement.
     rewrite <- H0, <- H1.
     apply refl_trans_finite; try assumption.
     intro; apply nop.
-    repeat intro; now apply @bin_seq with y.
+    repeat intro; now apply @seq with y.
   Qed.
 
+  Lemma loop {A B}:
+    forall a b,
+      a <= b ->
+      valid A (B a) ->
+      (forall k, a <= k < b ->
+                 valid (⋃ ⎨B i, i ∈〚a, k〛⎬)
+                       (⋃ ⎨B i, i ∈〚a, 1+k〛⎬)) ->
+      valid A (⋃ ⎨B i, i ∈〚a, b〛⎬).
+  Proof.
+    intros.
+    apply (seq (B a)); [assumption|].
+    apply
+      (@loop' (B a) _  (fun k => ⋃⎨B i, i ∈〚a, k 〛⎬) a b);
+      try firstorder.
+    apply union_singleton.
+  Qed.
 End Refinement.

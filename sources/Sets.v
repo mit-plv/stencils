@@ -2,7 +2,7 @@
 (* Sets                                                                      *)
 (* ========================================================================= *)
 
-Require Import List.
+Require Import List Omega.
 
 Delimit Scope set_scope with set.
 Local Open Scope set_scope.
@@ -52,13 +52,14 @@ Definition union {U} (A : set (set U)) : set U :=
 Notation "⋃ A" := (union A) (at level 35) : set_scope.
 
 Definition bin_union {U} (A B : set U) :=
-  ⋃ ⎨A; B⎬.
+  fun x => A x \/ B x.
 Infix "∪" := bin_union (at level 41, right associativity) : set_scope.
 
 
 (** Power set and cartesian product *)
 
-Definition powerset {U} (B : set U) : set (set U) := fun A => A ⊆ B.
+Definition powerset {U} (B : set U) : set (set U) :=
+  fun A => A ⊆ B.
 Notation "'℘' A" := (powerset A) (at level 35) : set_scope.
 
 Definition times {U V} (A : set U) (B : set V) : set (U * V) :=
@@ -88,159 +89,136 @@ Definition segment (x y : nat) : set nat :=
 Notation "〚 x , y 〛" := (segment x y) (at level 0) : set_scope.
 
 
+(** A couple tactics to deal with set-theoretic proofs.  They are intended to be
+ * used with firstorder. *)
+
+(** Definition unfolding in goals. *)
+
+Tactic Notation "sets" "red" :=
+  match goal with
+    | [ |- @is_in _ _ _ ]  => red
+    | [ |- @subset _ _ _ ] => do 2 intro
+    | [ |- _ ] => idtac
+  end.
+
+(** Equality/equivalence in goals *)
+
+Tactic Notation "set" "eq" "simpl" :=
+  match goal with
+    | [ |- _ = _ ] => apply same_eq; split
+    | [ |- @same _ _ _ ] => split
+  end.
+
+(** Membership in goals *)
+
+Tactic Notation "sets" "simpl" :=
+  repeat
+    (sets red;
+     match goal with
+       | [ |- @empty _ _ ] =>
+         change False
+       | [ |- @full _ _ ] =>
+         now red
+       | [ |- @powerset _ ?B ?A ] =>
+         change (A ⊆ B)
+       | [ |- @finite _ _ _ ] =>
+         unfold finite, is_in, In; simpl
+       | [ |- @extension _ _ _ _ ] =>
+         split
+       | [ |- @segment _ _ _ ] =>
+         unfold segment, is_in; try omega
+       | [ |- @times _ _ _ _ _ ] =>
+         split; simpl
+     end).
+
+Tactic Notation "image" "with" constr(x) :=
+  progress
+    (sets red;
+     match goal with
+       | [ |- @image _ _ _ _ _] => exists x; split; [sets simpl|]
+     end).
+
+Lemma union_image :
+  forall U V (A : set U) f (y : V) z, z ∈ A -> y ∈ f z -> y ∈ (⋃⎨f x, x ∈ A⎬).
+Proof.
+  firstorder.
+  eexists; split; [|eassumption].
+  now image with z.
+Qed.
+
+Tactic Notation "union" "with" constr(x) :=
+  progress
+    (sets red;
+     match goal with
+       | [ |- @union _ _ _ ] =>
+         apply union_image with x;
+         sets simpl;
+         try assumption
+       | [ |- @union _ _ _ ] =>
+         exists x;
+         split;
+         sets simpl;
+         [|try assumption]
+     end).
+
+
 (** Propositions *)
 
 Lemma mutual_inclusion : forall U (A B : set U), A ⊆ B -> B ⊆ A -> A ≡ B.
-Proof. intros; split; intuition. Qed.
+Proof. firstorder. Qed.
 
 Lemma bin_union_l :
   forall U (A B : set U) (x : U), x ∈ A -> x ∈ A ∪ B.
-Proof.
-  intros; exists A; split; [now left | assumption].
-Qed.
+Proof. firstorder. Qed.
 
 Lemma bin_union_r :
   forall U (A B : set U) (x : U), x ∈ B -> x ∈ A ∪ B.
-Proof.
-  intros; exists B; split; [now (right; left) | assumption].
-Qed.
-
-  (** XXX: Clean this up! *)
+Proof. firstorder. Qed.
 
 Lemma is_in_subset :
   forall U x (A B : set U), x ∈ A -> A ⊆ B -> x ∈ B.
-Proof. intuition. Qed.
+Proof. firstorder. Qed.
 
 Lemma union_subset :
   forall U (P Q A : set U), P ⊆ A -> Q ⊆ A -> P ∪ Q ⊆ A.
-Proof.
-  intros.
-  intros x [? [[?|[?|?]] ?]]; subst.
-  now apply H.
-  now apply H0.
-  destruct H1.
-Qed.
-
-Lemma union_is_in_l :
-  forall U (A B : set U) (x : U), x ∈ A -> x ∈ A ∪ B.
-Proof.
-  intros.
-  exists A; split; [now left | assumption].
-Qed.
-
-Lemma union_is_in_r :
-  forall U (A B : set U) (x : U), x ∈ B -> x ∈ A ∪ B.
-Proof.
-  intros.
-  exists B; split; [right; now left | assumption].
-Qed.
+Proof. firstorder. Qed.
 
 Lemma union_twice :
   forall U (A : set U), A ∪ A = A.
-Proof.
-  intros.
-  apply same_eq; split; intros.
-  destruct H as [? [[?|[?|?]] ?]]; subst; try assumption.
-  destruct H.
-  exists A; split; [now left | assumption].
-Qed.
+Proof. intros; set eq simpl; firstorder. Qed.
 
 Lemma union_assoc :
   forall U (A B C : set U), (A ∪ B) ∪ C = A ∪ (B ∪ C).
-Proof.
-  intros.
-  apply same_eq.
-  split; intros.
-  destruct H as [? [[?|?] ?]]; subst.
-  destruct H0 as [? [[?|?] ?]]; subst.
-  exists x0; split; [now left | assumption].
-  exists (B ∪ C); split. right; now left.
-  exists B; split; [now left | destruct H; now subst].
-  exists (B ∪ C); split. right; now left.
-  exists C; split; [right; now left | destruct H; now subst].
-
-  destruct H as [? [[?|?] ?]]; subst.
-  exists (x0 ∪ B); split. now left.
-  exists x0; split; [now left | assumption].
-  destruct H; subst; [| destruct H].
-  destruct H0 as [? [? ?]].
-  destruct H as [?|[?|?]]; subst.
-  exists (A ∪ x0); split; [now left|].
-  exists x0; split; [right; now left | assumption].
-  exists x0; split; [right; now left | assumption].
-  destruct H.
-Qed.
+Proof. intros; set eq simpl; firstorder. Qed.
 
 Lemma union_comm :
   forall U (A B : set U), A ∪ B = B ∪ A.
+Proof. intros; set eq simpl; firstorder. Qed.
+
+Lemma empty_bin_union :
+  forall U (A : set U), ∅ ∪ A = A.
+Proof. intros; set eq simpl; firstorder. Qed.
+
+Lemma union_segment :
+  forall V (f : nat -> set V) a b,
+    a <= b ->
+    (⋃ ⎨f x , x ∈〚a, b〛⎬) ∪ (f (1+b)) = (⋃ ⎨f x , x ∈〚a, 1+b〛⎬).
+Proof.
+  intros; set eq simpl; firstorder.
+  union with (f (1 + b)).
+  image with (1 + b); firstorder omega.
+  destruct eq_nat_dec with x1 (1 + b); subst; firstorder.
+  left; union with (f x1).
+  image with x1; firstorder omega.
+Qed.
+
+Lemma union_singleton :
+  forall U (f : nat -> set U) a,
+    (⋃⎨f i, i ∈ (〚a, a〛)⎬) = f a.
 Proof.
   intros.
   apply same_eq; split; intros.
-  destruct H as [? [[?|?] ?]]; subst.
-  exists x0; split; [right; now left | assumption].
-  destruct H; subst.
-  exists x0; split; [now left | assumption].
-  destruct H.
-
-  destruct H as [? [[?|?] ?]]; subst.
-  exists x0; split; [right; now left | assumption].
-  destruct H; subst.
-  exists x0; split; [now left | assumption].
-  destruct H.
+  destruct H as [? [[X [[? ?] ?]] ?]].
+  assert (a = X) by omega; now subst.
+  union with a.
 Qed.
-
-(** Tactics to handle set equality/equivalence in goals *)
-
-Tactic Notation "mutual" "inclusion" :=
-  match goal with
-    | [ |- _ = _ ] => apply same_eq, mutual_inclusion
-    | [ |- @same _ _ _ ] => apply mutual_inclusion
-  end.
-
-(** Tactics to handle membership in goals *)
-
-Tactic Notation "mem" "simpl" :=
-  repeat match goal with
-           | [ |- @is_in _ _ (@empty _) ] =>
-             change False
-           | [ |- @is_in _ _ (@full _) ] =>
-             now red
-           | [ |- @is_in _ ?A (@powerset _ ?B) ] =>
-             change (A ⊆ B)
-           | [ |- @is_in _ _ (@finite _ _) ] =>
-             unfold finite, is_in, In; simpl
-           | [ |- @is_in _ _ (@extension _ _ _) ] =>
-             split
-           | [ |- @is_in _ _ (@segment _ _) ] =>
-             unfold segment, is_in
-           | [ |- @is_in _ _ (@times _ _ _ _) ] =>
-             split; simpl
-         end.
-
-Tactic Notation "union" "left" :=
-  match goal with
-    | [ |- @is_in _ _ (@bin_union _ _ _) ] =>
-      apply bin_union_l; mem simpl
-  end.
-
-Tactic Notation "union" "right" :=
-  match goal with
-    | [ |- @is_in _ _ (@bin_union _ _ _) ] =>
-      apply bin_union_r; mem simpl
-  end.
-
-Tactic Notation "union" "with" constr(x) :=
-  match goal with
-    | [ |- @is_in _ _ (@union _ _) ] => exists x; split; mem simpl
-  end.
-
-Tactic Notation "image" "with" constr(x) :=
-  match goal with
-    | [ |- @is_in _ _ (@image _ _ _ _)] => exists x; split; [mem simpl|]
-  end.
-
-(** Tactics to handle inclusion in goals *)
-
-(*Tactic Notation "subset" "simpl" :=
-  match goal with
-  end.*)
