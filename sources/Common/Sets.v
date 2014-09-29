@@ -243,3 +243,7 @@ Proof.
   assert (a = X) by omega; now subst.
   union with a.
 Qed.
+
+Lemma bin_union_triple_split U (A B C : set U) :
+  A ∪ B ∪ C = (A ∪ B) ∪ (A ∪ C).
+Proof. apply same_eq; firstorder. Qed.

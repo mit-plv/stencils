@@ -228,13 +228,15 @@ Section Valid.
 
   Lemma par' :
     forall A B k a,
-      (forall i, a <= i <= a + k -> valid A (B i)) -> valid A (⋃⎨B i, i ∈〚a, a+k〛⎬).
+      (forall i, a <= i <= a + k -> valid A (A ∪ B i)) ->
+      valid A (A ∪ ⋃⎨B i, i ∈〚a, a+k〛⎬).
   Proof.
     induction k; intros.
     + rewrite <- plus_n_O, union_singleton.
       apply H; omega.
     + replace (a + S k)%nat with (1 + (a + k))%nat by omega.
       rewrite <- union_segment by omega.
+      rewrite bin_union_triple_split.
       apply split.
       * apply IHk.
         intros; apply H; omega.
@@ -244,7 +246,7 @@ Section Valid.
   Lemma par :
     forall A B a b,
       a <= b ->
-      (forall i, a <= i <= b -> valid A (B i)) -> valid A (⋃⎨B i, i ∈〚a, b〛⎬).
+      (forall i, a <= i <= b -> valid A (A ∪ B i)) -> valid A (A ∪ ⋃⎨B i, i ∈〚a, b〛⎬).
   Proof.
     intros.
     replace b with (a + (b - a)) by eauto with arith.
@@ -278,6 +280,10 @@ Section Valid.
     union with (0 : nat); firstorder.
   Qed.
 
+  Lemma append A B :
+    valid A B -> valid A (A ∪ B).
+  Proof. now apply split, nop. Qed.
+
   Lemma loop' {A B f} :
     forall a b,
       a <= b -> (f a) = A -> (f b) = B ->
@@ -293,17 +299,17 @@ Section Valid.
   Lemma loop {A B}:
     forall a b,
       a <= b ->
-      valid A (B a) ->
+      valid A (A ∪ B a) ->
       (forall k, a <= k < b ->
-                 valid (⋃ ⎨B i, i ∈〚a, k〛⎬)
-                       (⋃ ⎨B i, i ∈〚a, 1+k〛⎬)) ->
-      valid A (⋃ ⎨B i, i ∈〚a, b〛⎬).
+                 valid (A ∪ ⋃ ⎨B i, i ∈〚a, k〛⎬)
+                       (A ∪ ⋃ ⎨B i, i ∈〚a, 1+k〛⎬)) ->
+      valid A (A ∪ ⋃ ⎨B i, i ∈〚a, b〛⎬).
   Proof.
     intros.
-    apply (sequ (B a)); [assumption|].
+    apply (sequ (A ∪ B a)); [assumption|].
     apply
-      (@loop' (B a) _  (fun k => ⋃⎨B i, i ∈〚a, k 〛⎬) a b);
+      (@loop' (A ∪ B a) _  (fun k => A ∪ ⋃⎨B i, i ∈〚a, k 〛⎬) a b);
       try firstorder.
-    apply union_singleton.
+    now rewrite union_singleton.
   Qed.
 End Valid.

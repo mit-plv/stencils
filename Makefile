@@ -4,6 +4,7 @@ SOURCES_MODULES := \
 	Common/Stencils \
 	Common/Misc \
 	Abstract/Semantics \
+	Abstract/Strategies \
 	Core
 SOURCES_VS  := $(SOURCES_MODULES:%=sources/%.v)
 SOURCES_VOS := $(SOURCES_MODULES:%=sources/%.vo)

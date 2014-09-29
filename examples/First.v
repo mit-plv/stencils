@@ -35,8 +35,13 @@ End ClassicalStencils.
 
 Section VN1D.
   Variables n : nat.
+  Hypothesis n_gt_1 : n > 1.
 
   Definition VN1D := VonNeumann1D (2 * n) n.
+
+  Check (Spawn Node i ∈〚0, n〛
+               With
+               Compute 〚0, 0〛× ⎨i⎬).
 
   Lemma compute_row :
     forall a b c d t,
@@ -45,7 +50,7 @@ Section VN1D.
       valid VN1D (〚a, b〛 × ⎨t⎬)
             (〚a, b〛 × ⎨t⎬ ∪〚c, d〛 × ⎨1+t⎬).
   Proof.
-(*    intros; unfold valid, closure.
+    intros; unfold valid, closure.
     union with 1; simpl.
     unfold next.
     union with (〚a, b〛 × ⎨t⎬).
@@ -53,46 +58,16 @@ Section VN1D.
     image with (〚c, d 〛 × ⎨1 + t⎬).
     unfold boundary.
     sets red; sets simpl.
-    unfold sp, space, nb_iter, VN1D, VonNeumann1D.
-    admit.
 
-    intros.
-    inversion H5; clear H5.
-    unfold pattern, VN1D, VonNeumann1D, sp in *; simpl in *.
-    firstorder; subst; simpl in *.*)
-  Admitted.
+    + unfold sp, space, nb_iter, VN1D, VonNeumann1D.
+      destruct x; firstorder; simpl in *; subst; unfold add_proj in *; omega.
 
-(*  Lemma compute_row :
-    forall a b t,
-      a <= b < 2 * n -> 1 + t <= n - 1 ->
-      valid VN1D (〚a, 1+b〛 × ⎨t⎬)
-            (〚a, 1+b〛 × ⎨t⎬ ∪〚1+a, b〛 × ⎨1+t⎬).
-  Proof.
-    intros.
-    unfold valid, closure.
-    eexists; split.
-    image with 1; reflexivity.
-    unfold iter_next, next.
-    eexists; split.
-    image with (〚a, 1+b〛 × ⎨t⎬); intuition.
-    image with (〚1+a, b〛 × ⎨1+t⎬).
-    2: reflexivity.
-    intros x Hx.
-    split.
-    + unfold sp, space, VN1D, VonNeumann1D, nb_iter.
-      admit. (* arithmetics tactic *)
     + intros.
-      inversion H2; clear H2; subst.
-      unfold pattern, center, sp, nb_iter, space, VN1D, VonNeumann1D
-        in *.
-      inversion H3; clear H3; subst.
-    - admit. (* arithmetics, again *)
-    - inversion H2; clear H2; subst.
-      * admit. (* again *)
-      * inversion H3; clear H3; subst.
-        admit. (* last one! *)
-        inversion H2.
-  Qed.*)
+      inversion H5; clear H5.
+      unfold pattern, VN1D, VonNeumann1D, sp in *; simpl in *.
+      firstorder; subst; simpl in *; unfold add_proj in *; try firstorder omega.
+      eauto with arith.
+  Qed.
 
   Definition valid_strategy :
     valid VN1D ∅ (sp VN1D).
@@ -113,7 +88,7 @@ Section VN1D.
       sets simpl; repeat intro.
       split.
       unfold sp, space, VN1D, VonNeumann1D.
-      admit. (* set theory tactic here *)
+      destruct x; firstorder. (* set theory *)
       intros.
       inversion H1; sets simpl.
       admit. (* arithmetics tactic here *)
