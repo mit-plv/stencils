@@ -74,15 +74,22 @@ Section Refinement.
     ⋃ ⎨iter_next CC n, n ∈ ⟨nat⟩⎬.
 
   Definition valid (A B : group) : Prop :=
-    B ∈ closure (⎨A⎬).
+    B ∈ closure ⎨A⎬.
 
   (** A bunch of intermediate results used in the main combinators described
-   * below. *)
+   * below.  The details should be irrelevant for most readers. *)
+
+  Definition union_closed {U} (CC : set (set U)) :=
+    forall A B, A ∈ CC -> B ∈ CC -> A ∪ B ∈ CC.
+
+  (** Level 0: Proofs about [boundary]. *)
 
   Lemma boundary_bin_union :
     forall P Q A B, P ⊆ boundary A -> Q ⊆ boundary B ->
                     P ∪ Q ⊆ boundary (A ∪ B).
   Proof. firstorder. Qed.
+
+  (** Level 1: Proofs about [next]. *)
 
   Lemma next_monotonic :
     forall (CC DD : set group),
@@ -98,9 +105,6 @@ Section Refinement.
     apply same_eq; firstorder.
   Qed.
 
-  Definition union_closed {U} (CC : set (set U)) :=
-    forall A B, A ∈ CC -> B ∈ CC -> A ∪ B ∈ CC.
-
   Lemma next_union_closed :
     forall CC, union_closed CC -> union_closed (next CC).
   Proof.
@@ -114,9 +118,21 @@ Section Refinement.
     union with (P ∪ Q). firstorder.
     replace ((P ∪ R) ∪ Q ∪ T) with ((P ∪ Q) ∪ (R ∪ T)).
     image with (R ∪ T); firstorder.
-    (* XXX: It would be probably worth doing something cleaner... *)
+    (* XXX: This should be some monoid tactic.  This is inefficient. *)
     apply same_eq; firstorder.
   Qed.
+
+  Lemma next_subset :
+    forall CC A,
+      (forall B, B ∈ CC -> A ⊆ B) -> forall B, B ∈ next CC -> A ⊆ B.
+  Proof.
+    intros.
+    destruct H0 as [? [[G1 [? ?]] ?]]; subst.
+    destruct H2 as [G2 [? ?]]; subst.
+    specialize (H _ H0); firstorder.
+  Qed.
+
+  (** Level 2: Proofs about [iter_next]. *)
 
   Lemma iter_in :
     forall A CC, A ∈ CC -> forall k, iter_next ⎨A⎬ k ⊆ iter_next CC k.
@@ -155,7 +171,41 @@ Section Refinement.
     + intros; simpl; now apply next_extensive.
   Qed.
 
-  (** Combinators *)
+  Lemma iter_subset :
+    forall CC A n,
+      (forall B, B ∈ CC -> A ⊆ B) -> forall B, B ∈ iter_next CC n -> A ⊆ B.
+  Proof.
+    induction n.
+    + firstorder.
+    + intros.
+      apply next_subset with (iter_next CC n); [firstorder|assumption].
+  Qed.
+
+  Lemma iter_bin_union :
+    forall n A B C,
+      A ⊆ C -> B ∈ iter_next ⎨A⎬ n -> C ∪ B ∈ iter_next ⎨C⎬ n.
+  Proof.
+    induction n; intros.
+    + simpl in *.
+      destruct H0; subst.
+      rewrite union_comm.
+      rewrite <- (subset_bin_union _ B C); firstorder.
+      destruct H0.
+    + simpl in *.
+      destruct H0 as [? [[G1 [? ?]] ?]]; subst.
+      specialize (IHn _ _ C H H0).
+      unfold next. union with (C ∪ G1).
+      destruct H2 as [G2 [? ?]]; subst.
+      image with (G2 ∖ C).
+      firstorder.
+
+      rewrite <- union_assoc.
+      repeat rewrite (union_comm _ C G1).
+      repeat rewrite union_assoc.
+      now rewrite (diff_bin_union _ C G2).
+  Qed.
+
+  (** Level 4: Combinators. *)
 
   Lemma seq {A C} B : valid A B -> valid B C -> valid A C.
   Proof.
@@ -190,29 +240,25 @@ Section Refinement.
       apply Max.le_max_r.
   Qed.
 
-  Lemma bin_union_iter :
-    forall n A B C,
-      A ⊆ C -> A ∪ B ∈ iter_next ⎨A⎬ n -> C ∪ B ∈ iter_next ⎨C⎬ n.
-  Proof.
-    induction n; intros.
-    simpl in *.
-    destruct H0.
-    admit.
-    destruct H0.
-    simpl in *.
-    apply next_extensive.
-    apply IHn.
-    assumption. (* does not quiet work! *)
-  Admitted.
-
-  Lemma focus A B C:
-    valid A (A ∪ B) -> A ⊆ C -> valid C (C ∪ B).
+  Lemma focus' A B C :
+    valid A B -> A ⊆ C -> valid C (C ∪ B).
   Proof.
     unfold valid, closure; intros.
     destruct H as [? [[nb [? ?]] ?]]; subst.
     union with nb.
-  Admitted.
+    now apply iter_bin_union with A.
+  Qed.
 
+  Lemma focus A B C :
+    valid A (A ∪ B) -> A ⊆ C -> valid C (C ∪ B).
+  Proof.
+    intros H HA.
+    generalize (focus' A (A ∪ B) C H HA); intro H'.
+    rewrite <- union_assoc in H'.
+    replace (C ∪ A) with C in H'.
+    assumption.
+    apply same_eq; firstorder.
+  Qed.
 
   Lemma nop {A} : valid A A.
   Proof.

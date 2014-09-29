@@ -11,6 +11,8 @@ Definition set (U : Type) :=
   U -> Prop.
 
 
+(** Note: We assume Predicate Extensionality and the law of Excluded Middle. *)
+
 (** Membership, subsets, set equivalence and an extensionality axiom *)
 
 Definition is_in {U} (x : U) (A : set U) :=
@@ -26,7 +28,6 @@ Definition same {U} (A B : set U) :=
 Infix "≡" := same (at level 70, no associativity) : set_scope.
 Axiom same_eq :
   forall U (A B : set U), A ≡ B -> A = B.
-
 
 (** Empty and full set.  Finite sets *)
 
@@ -65,6 +66,13 @@ Notation "'℘' A" := (powerset A) (at level 35) : set_scope.
 Definition times {U V} (A : set U) (B : set V) : set (U * V) :=
   fun p => fst p ∈ A /\ snd p ∈ B.
 Infix "×" := times (at level 39, right associativity) : set_scope.
+
+
+(** Set-theoretic difference *)
+
+Definition diff {U} (A B : set U) : set U :=
+  fun x => A x /\ ~B x.
+Infix "∖" := diff (at level 37, no associativity) : set_scope.
 
 
 (** Sets defined by extension.  Image of a set through a mapping *)
@@ -166,6 +174,19 @@ Tactic Notation "union" "with" constr(x) :=
 
 Lemma mutual_inclusion : forall U (A B : set U), A ⊆ B -> B ⊆ A -> A ≡ B.
 Proof. firstorder. Qed.
+
+Lemma subset_bin_union :
+  forall U (A B : set U), A ⊆ B -> B = A ∪ B.
+Proof. intros; set eq simpl; firstorder. Qed.
+
+Axiom em : forall A : Prop, A \/ ~ A.
+
+Lemma diff_bin_union :
+  forall U (A B : set U), A ∪ B = A ∪ (B ∖ A).
+Proof.
+  intros; set eq simpl; firstorder.
+  destruct em with (A x); firstorder.
+Qed.
 
 Lemma bin_union_l :
   forall U (A B : set U) (x : U), x ∈ A -> x ∈ A ∪ B.
