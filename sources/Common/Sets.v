@@ -37,20 +37,23 @@ Notation "∅" := (empty _) : set_scope.
 
 Definition full (U : Type) : set U :=
   fun _ => True.
-Notation "⟨ U ⟩" := (full U) : set_scope.
+Notation "⟨ U ⟩" :=
+  (full U) (format "'⟨' U '⟩'"): set_scope.
 
 Definition finite {U} (l : list U) : set U :=
   fun x => In x l.
 Notation "⎨ x ; .. ; y ⎬" :=
   (finite (cons x .. (cons y nil) ..))
-    (at level 0, x at next level, y at next level): set_scope.
+    (at level 0, x at next level, y at next level,
+     format "'⎨' x ';'  .. ';'  y '⎬'") : set_scope.
 
 
 (** Set-theoretic and binary union *)
 
 Definition union {U} (A : set (set U)) : set U :=
   fun y => exists x, x ∈ A /\ y ∈ x.
-Notation "⋃ A" := (union A) (at level 35) : set_scope.
+Notation "⋃ A" :=
+  (union A) (at level 35, format "'⋃'  A") : set_scope.
 
 Definition bin_union {U} (A B : set U) :=
   fun x => A x \/ B x.
@@ -61,7 +64,8 @@ Infix "∪" := bin_union (at level 41, right associativity) : set_scope.
 
 Definition powerset {U} (B : set U) : set (set U) :=
   fun A => A ⊆ B.
-Notation "'℘' A" := (powerset A) (at level 35) : set_scope.
+Notation "'℘' A" :=
+  (powerset A) (at level 35, format "'℘'  A") : set_scope.
 
 Definition times {U V} (A : set U) (B : set V) : set (U * V) :=
   fun p => fst p ∈ A /\ snd p ∈ B.
@@ -81,20 +85,24 @@ Definition extension {U} (A : set U) (P : U -> Prop) : set U :=
   fun x => x ∈ A /\ P x.
 Notation "⎨ x ∈ A | P ⎬" :=
   (extension A (fun x => P))
-    (at level 0, x at next level, A at next level, P at next level) : set_scope.
+    (at level 0, x at next level, A at next level, P at next level,
+    format "'⎨' x  '∈'  A  '|'  P '⎬'") : set_scope.
 
 Definition image {U V} (A : set U) (f : U -> V) : set V :=
   fun y => exists x, x ∈ A /\ y = f x.
 Notation "⎨ e , x ∈ A ⎬" :=
   (image A (fun x => e))
-    (at level 0, x at next level, A at next level, e at next level) : set_scope.
+    (at level 0, x at next level, A at next level, e at next level,
+    format "'⎨' e ','  x  '∈'  A '⎬'") : set_scope.
 
 
 (** Integer segments *)
 
 Definition segment (x y : nat) : set nat :=
   fun n => x <= n <= y.
-Notation "〚 x , y 〛" := (segment x y) (at level 0) : set_scope.
+Notation "〚 x , y 〛" :=
+  (segment x y)
+    (at level 0, format "'〚' x ','  '/' y '〛'") : set_scope.
 
 
 (** [singleton A] is true if and only if [A] contains exactly one element. *)
