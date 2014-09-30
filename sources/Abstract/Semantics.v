@@ -280,10 +280,6 @@ Section Valid.
     union with (0 : nat); firstorder.
   Qed.
 
-  Lemma append A B :
-    valid A B -> valid A (A ∪ B).
-  Proof. now apply split, nop. Qed.
-
   Lemma loop' {A B f} :
     forall a b,
       a <= b -> (f a) = A -> (f b) = B ->

@@ -86,14 +86,14 @@ Definition extension {U} (A : set U) (P : U -> Prop) : set U :=
 Notation "⎨ x ∈ A | P ⎬" :=
   (extension A (fun x => P))
     (at level 0, x at next level, A at next level, P at next level,
-    format "'⎨' x  '∈'  A  '|'  P '⎬'") : set_scope.
+    format "'⎨' x  '∈'  A  '/' '|'  P '⎬'") : set_scope.
 
 Definition image {U V} (A : set U) (f : U -> V) : set V :=
   fun y => exists x, x ∈ A /\ y = f x.
 Notation "⎨ e , x ∈ A ⎬" :=
   (image A (fun x => e))
     (at level 0, x at next level, A at next level, e at next level,
-    format "'⎨' e ','  x  '∈'  A '⎬'") : set_scope.
+    format "'⎨' e ',' '/'  x  '∈'  A '⎬'") : set_scope.
 
 
 (** Integer segments *)
