@@ -231,7 +231,7 @@ Module Defs (Cell : CELL) (Stencil : STENCIL Cell).
           Arith.eval s a <= Arith.eval s b ->
           exec (s⟨x ← (Arith.eval s a)⟩) p t ->
           exec t (Loop x (Arith.Add (Arith.Cst 1) a) b p) u ->
-          exec s (Loop x a b p) (u⟨x ← (State.get_var s x)⟩).
+          exec s (Loop x a b p) u⟨x ← (State.get_var s x)⟩.
 
   End Imp.
 
@@ -406,16 +406,18 @@ Module Defs (Cell : CELL) (Stencil : STENCIL Cell).
 
     (** Operational semantics for communication steps. *)
     (* XXX: Documentation. *)
-    Definition comm_step (p : t) (T : Time.t) (s t : GState.t)
+    Definition send_step (p : t) (T : Time.t)
                (u : Thread.t -> Thread.t -> State.t): Prop :=
+      forall src to,
+        (Comm.denote (comm p))
+          // (State.initial⟨"id" ← src; "T" ← T; "to" ← to⟩) ⇓ (u src to).
+
+    Definition merge_step (p : t) (T : Time.t) (s t : GState.t)
+               (u : Thread.t -> Thread.t -> State.t) : Prop :=
       forall (id : Thread.t) (c : Cell.t),
         State.get_cell (t id) c = true ->
-        State.get_cell (s id) c = true
-        \/
-        exists src,
-          (Comm.denote (comm p))
-            // (State.initial⟨"id" ← src; "T" ← T; "to" ← id⟩) ⇓ (u src id)
-          /\ State.get_cell (u src id) c = true.
+        State.get_cell (s id) c = true \/
+        exists src, State.get_cell (u src id) c = true.
 
     (** [step p Tmax s t u] holds if and only if for all time steps [T]
      * satisfying [0 <= T <= Tmax]:
@@ -429,19 +431,20 @@ Module Defs (Cell : CELL) (Stencil : STENCIL Cell).
      *    information it does not know. *)
     Definition step (p : t) (Tmax : Z) (s t : Time.t -> GState.t)
                (u : Time.t -> Thread.t -> Thread.t -> State.t) :=
-      (forall T, 0 <= T <= Tmax -> comp_step p T (s T) (t T))
-      /\ (forall T, 0 <= T <= Tmax -> comm_step p T (t T) (s (1+T)) (u T))
-      /\ (forall T id to c,
-            0 <= T <= Tmax -> State.get_cell (u T id to) c = true ->
-            State.get_cell (t T id) c = true).
+      forall T,
+        0 <= T <= Tmax ->
+           comp_step p T (s T) (t T)
+        /\ send_step p T (u T)
+        /\ merge_step p T (t T) (s (1+T)) (u T).
 
     (* XXX: Documentation. *)
     Definition correct (p : t) :=
       exists Tmax s t u,
-        step p Tmax s t u /\
-        forall id, s 0 id = State.initial /\
-        forall c, Stencil.space c ->
-                  exists id, State.get_cell (s (1+Tmax) id) c = true.
+           step p Tmax s t u
+        /\ (forall id, s 0 id = State.initial)
+        /\ forall c,
+             Stencil.space c ->
+             exists id, State.get_cell (s (1+Tmax) id) c = true.
   End Kernel.
 
 End Defs.
