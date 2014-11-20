@@ -2,7 +2,7 @@
  * Sets                                                                       *
  * ========================================================================== *)
 
-Require Import ZArith.
+Require Import ZArith Setoid.
 Local Open Scope Z_scope.
 
 Definition set (A : Type) :=
@@ -52,3 +52,6 @@ Lemma bin_union_assoc :
   forall U (A B C : set U),
     (A ∪ B) ∪ C ≡ A ∪ B ∪ C.
 Proof. firstorder. Qed.
+
+Instance Equivalence_equiv : forall U, Equivalence (@same U).
+Proof. split; constructor; firstorder. Qed.

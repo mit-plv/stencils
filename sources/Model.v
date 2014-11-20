@@ -44,6 +44,11 @@ Module Defs (Cell : CELL) (Stencil : STENCIL Cell).
     Definition pack x v : string * Z := (x,v).
     Definition update p s := State.set_var s (fst p) (snd p).
 
+    (** Merging two [State.t]s.  Variable assignments are the ones of the
+     * second state. *)
+    Definition union (s1 s2 : State.t) : State.t :=
+      (fst s2, fun c => snd s1 c || snd s2 c)%bool.
+
   End State.
 
   Module StateNotations.
@@ -356,15 +361,22 @@ Module Defs (Cell : CELL) (Stencil : STENCIL Cell).
   End Comm.
 
   (** [Thread.t] and [Time.t] represent respectively thread IDs and time
-   * steps.  These have to be integers, since our programs handle only
-   * variables of type [Z].  This is not restrictive in any way. *)
+   * steps. *)
   Module Thread.
-    Definition t := Z.
+    Definition t := nat.
+    Definition to_Z (id : t) : Z :=
+      Z.of_nat id.
   End Thread.
+  Coercion Thread.to_Z : Thread.t >-> Z.
 
   Module Time.
-    Definition t := Z.
+    Definition t := nat.
+    Definition to_Z (T : t) : Z :=
+      Z.of_nat T.
+    Definition incr (T : t) : t :=
+      (1+T)%nat.
   End Time.
+  Coercion Time.to_Z : Time.t >-> Z.
 
   (** Global states of a distributed program are represented by type
    * [GState.t], which contains a [State.t] for every thread. *)
@@ -400,24 +412,31 @@ Module Defs (Cell : CELL) (Stencil : STENCIL Cell).
      * program using [Comp.denote].  We run in for every thread [id] from state
      * [s id], after correctly setting the variables ["id"] and ["T"] and end up
      * in state [t id]. *)
-    Definition comp_step (p : t) (T : Time.t) (s t : GState.t) : Prop :=
+    Definition comp_step (p : t) (T : Time.t) (idMax : Thread.t)
+               (s t : GState.t) : Prop :=
       forall id : Thread.t,
+        id <= idMax ->
         (Comp.denote (comp p)) // ((s id)⟨"id" ← id; "T" ← T⟩) ⇓ (t id).
 
     (** Operational semantics for communication steps. *)
     (* XXX: Documentation. *)
-    Definition send_step (p : t) (T : Time.t)
+    Definition send_step (p : t) (T : Time.t) (idMax : Thread.t)
                (u : Thread.t -> Thread.t -> State.t): Prop :=
-      forall src to,
+      forall src to : Thread.t,
+        src <= idMax ->
+        to <= idMax ->
         (Comm.denote (comm p))
           // (State.initial⟨"id" ← src; "T" ← T; "to" ← to⟩) ⇓ (u src to).
 
-    Definition merge_step (p : t) (T : Time.t) (s t : GState.t)
+    Definition merge_step (p : t) (T : Time.t) (idMax : Thread.t)
+               (s t : GState.t)
                (u : Thread.t -> Thread.t -> State.t) : Prop :=
       forall (id : Thread.t) (c : Cell.t),
+        0 <= id <= idMax ->
         State.get_cell (t id) c = true ->
         State.get_cell (s id) c = true \/
-        exists src, State.get_cell (u src id) c = true.
+        exists src : Thread.t,
+          0 <= src <= idMax /\ State.get_cell (u src id) c = true.
 
     (** [step p Tmax s t u] holds if and only if for all time steps [T]
      * satisfying [0 <= T <= Tmax]:
@@ -429,22 +448,29 @@ Module Defs (Cell : CELL) (Stencil : STENCIL Cell).
      *    cell [c] at thread [id'], at time [T].
      *  - [u T id id' c] hold only when [t id c] does. That is, no thread sends
      *    information it does not know. *)
-    Definition step (p : t) (Tmax : Z) (s t : Time.t -> GState.t)
+    Definition step (p : t) (Tmax : Time.t) (idMax : Thread.t)
+               (s t : Time.t -> GState.t)
                (u : Time.t -> Thread.t -> Thread.t -> State.t) :=
-      forall T,
+      forall T : Time.t,
         0 <= T <= Tmax ->
-           comp_step p T (s T) (t T)
-        /\ send_step p T (u T)
-        /\ merge_step p T (t T) (s (1+T)) (u T).
+           comp_step p T idMax (s T) (t T)
+        /\ send_step p T idMax (u T)
+        /\ merge_step p T idMax (t T) (s (Time.incr T)) (u T).
 
     (* XXX: Documentation. *)
-    Definition correct (p : t) :=
-      exists Tmax s t u,
-           step p Tmax s t u
-        /\ (forall id, s 0 id = State.initial)
+    Definition trace_correct (p : t) (Tmax : Time.t) (idMax : Thread.t)
+               s t u :=
+        step p Tmax idMax s t u
+        /\ (forall id : Thread.t,
+              id <= idMax -> s 0%nat id = State.initial)
         /\ forall c,
              Stencil.space c ->
-             exists id, State.get_cell (s (1+Tmax) id) c = true.
+             exists id : Thread.t,
+               id <= idMax /\ State.get_cell (s (Time.incr Tmax) id) c = true.
+
+    Definition correct (p : t) (Tmax : Time.t) (idMax : Thread.t) :=
+      exists s t u, trace_correct p Tmax idMax s t u.
+
   End Kernel.
 
 End Defs.

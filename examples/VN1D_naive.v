@@ -19,30 +19,38 @@ Import Verif.
 (** A simple kernel *)
 
 Definition comp_p :=
-  (If (0 <=? "id") && ("id" <? P)
-   && (0 <=? "T") && ("T" <? K) Then
-     For "i" From 0 To N-1 Do
-       Fire (N*"id" + "i", "T" : Arith.t)
-   Else
-     Nop)%step_t.
+  (For "i" From 0 To N-1 Do
+       Fire (N*"id" + "i", "T" : Arith.t))%step_t.
 
 Definition comm_p :=
-  (If (0 <=? "id") && ("id" <? P)
-   && (0 <=? "T") && ("T" <? K) Then
-     If "to" =? "id"-1 Then
-       Fire (N*"id", "T" : Arith.t)
-     Else
-       If "to" =? "id"+1 Then
-         Fire (N*"id" + N-1, "T" : Arith.t)
-       Else
-         Nop
+  (If "to" =? "id"-1 Then
+     Fire (N*"id", "T" : Arith.t)
    Else
-     Nop)%step_t.
+     If "to" =? "id"+1 Then
+       Fire (N*"id" + N-1, "T" : Arith.t)
+     Else
+       Nop)%step_t.
+
+Goal forall x id T, x = (Symbolic.exec comp_p (State.initial⟨"id" ← id; "T" ← T⟩)).
+intros; simpl; unfold CEval, Z2.eval; simpl.
+Abort.
+
+Goal
+  forall x id to T,
+    x =
+    (Symbolic.exec comm_p (State.initial⟨"id" ← id; "T" ← T; "to" ← to⟩)).
+intros; simpl; unfold CEval, Z2.eval; simpl.
+Abort.
 
 Definition naive := Kernel.make comp_p comm_p.
 
 Theorem naive_correct :
-  Kernel.correct naive.
+  Kernel.correct naive (Z.to_nat K) (Z.to_nat P).
 Proof.
-  halts after K steps.
+(*  exists (fun T => Symbolic.Trace.s naive T (Z.to_nat P)).
+  exists (fun T => Symbolic.Trace.t naive T (Z.to_nat P)).
+  exists (fun T => Symbolic.Trace.u naive T).
+  unfold Kernel.trace_correct, Kernel.step, Kernel.comp_step, Kernel.send_step,
+  Kernel.merge_step.
+  repeat (intro || split).*)
 Abort.
