@@ -1,16 +1,16 @@
 SOURCES_MODULES := \
-	Common/Sets \
-	Common/Monoids \
-	Common/Stencils \
-	Common/Misc \
-	Abstract/Semantics \
-	Abstract/Strategies \
+	Main/Stencils \
+	Main/Sets \
+	Univ/Z1 \
+	Univ/Z2 \
+	Model \
+	Facts \
 	Core
 SOURCES_VS  := $(SOURCES_MODULES:%=sources/%.v)
 SOURCES_VOS := $(SOURCES_MODULES:%=sources/%.vo)
 
 EXAMPLES_MODULES := \
-	VonNeumann1D
+	VN1D_naive
 EXAMPLES_VS  := $(EXAMPLES_MODULES:%=examples/%.v)
 EXAMPLES_VOS := $(EXAMPLES_MODULES:%=examples/%.vo)
 

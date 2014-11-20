@@ -1,9 +1,6 @@
-Require Export Common.Sets Common.Monoids Common.Stencils
-               Abstract.Semantics Abstract.Strategies.
-Require Export List.
+Require Export Main.Stencils Main.Sets Model Facts.
+Require Export List String.
 
 Open Scope set_scope.
-Open Scope sem_scope.
-Open Scope stg_scope.
-Open Scope monoid.
+Open Scope string_scope.
 Export ListNotations.
