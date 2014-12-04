@@ -420,7 +420,7 @@ Module Defs (Cell : CELL) (Stencil : STENCIL Cell).
 
     (** Operational semantics for communication steps. *)
     (* XXX: Documentation. *)
-    Definition send_step (p : t) (T : Time.t) (idMax : Thread.t)
+    Definition repr_comm (p : t) (T : Time.t) (idMax : Thread.t)
                (u : Thread.t -> Thread.t -> State.t): Prop :=
       forall src to : Thread.t,
         src <= idMax ->
@@ -432,20 +432,27 @@ Module Defs (Cell : CELL) (Stencil : STENCIL Cell).
                (s t : GState.t)
                (u : Thread.t -> Thread.t -> State.t) : Prop :=
       forall (id : Thread.t) (c : Cell.t),
-        0 <= id <= idMax ->
+        id <= idMax ->
         State.get_cell (t id) c = true ->
         State.get_cell (s id) c = true \/
         exists src : Thread.t,
-          0 <= src <= idMax /\ State.get_cell (u src id) c = true.
+          src <= idMax /\ State.get_cell (u src id) c = true.
+
+    Definition sends_known_vals (p : t) (T : Time.t) (idMax : Thread.t)
+               (t : GState.t)
+               (u : Thread.t -> Thread.t -> State.t) : Prop :=
+      forall (id id' : Thread.t) (c : Cell.t),
+        id <= idMax ->
+        State.get_cell (u id id') c = true -> State.get_cell (t id) c = true.
 
     (** [step p Tmax s t u] holds if and only if for all time steps [T]
      * satisfying [0 <= T <= Tmax]:
      *
      *  - Executing computation step [T] from state [s T] yields state [t T].
-     *  - Executing communication step [T] from state [t T] yields state
-     *    [s (1+T)].
      *  - [u T id id' c] holds if and only if thread [id] sends the content of
      *    cell [c] at thread [id'], at time [T].
+     *  - Executing communication step [T] from state [t T] yields state
+     *    [s (1+T)].
      *  - [u T id id' c] hold only when [t id c] does. That is, no thread sends
      *    information it does not know. *)
     Definition step (p : t) (Tmax : Time.t) (idMax : Thread.t)
@@ -454,8 +461,9 @@ Module Defs (Cell : CELL) (Stencil : STENCIL Cell).
       forall T : Time.t,
         0 <= T <= Tmax ->
            comp_step p T idMax (s T) (t T)
-        /\ send_step p T idMax (u T)
-        /\ merge_step p T idMax (t T) (s (Time.incr T)) (u T).
+        /\ repr_comm p T idMax (u T)
+        /\ merge_step p T idMax (t T) (s (Time.incr T)) (u T)
+        /\ sends_known_vals p T idMax (t T) (u T).
 
     (* XXX: Documentation. *)
     Definition trace_correct (p : t) (Tmax : Time.t) (idMax : Thread.t)

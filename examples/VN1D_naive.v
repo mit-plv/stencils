@@ -31,22 +31,44 @@ Definition comm_p :=
      Else
        Nop)%step_t.
 
-Goal forall x id T, x = (Symbolic.exec comp_p (State.initial⟨"id" ← id; "T" ← T⟩)).
+Goal forall x id T s,
+       x = (Symbolic.exec (Comp.denote comp_p) (s⟨"id" ← id; "T" ← T⟩)).
 intros; simpl; unfold CEval, Z2.eval; simpl.
 Abort.
 
 Goal
-  forall x id to T,
+  forall x id to T s,
     x =
-    (Symbolic.exec comm_p (State.initial⟨"id" ← id; "T" ← T; "to" ← to⟩)).
+    (Symbolic.exec (Comm.denote comm_p) (s⟨"id" ← id; "T" ← T; "to" ← to⟩)).
 intros; simpl; unfold CEval, Z2.eval; simpl.
 Abort.
+
+Goal forall id T s S,
+       Symbolic.VC (Comp.denote comp_p) (s⟨"id" ← id; "T" ← T⟩) S.
+intros; simpl; unfold Comp.F, Z2.add, CEval, Z2.eval; simpl.
+intuition.
+Abort.
+
+Goal forall id T s S,
+       Symbolic.VC (Comp.denote (Fire ("id"+"T", "id" : Arith.t);;
+                                 Fire ("id"+"T"+1, "id"+1))%step_t)
+                   (s⟨"id" ← id; "T" ← T⟩) S.
+intros; simpl; unfold Comp.F, Z2.add, CEval, Z2.eval; simpl.
+intuition.
+Transparent State.get_cell.
+rewrite (H (id + T + fst k + 0, id + snd k + 0)).
+Focus 4.
+Abort.
+
+
 
 Definition naive := Kernel.make comp_p comm_p.
 
 Theorem naive_correct :
   Kernel.correct naive (Z.to_nat K) (Z.to_nat P).
 Proof.
+  unfold Kernel.correct.
+  unfold Kernel.trace_correct.
 (*  exists (fun T => Symbolic.Trace.s naive T (Z.to_nat P)).
   exists (fun T => Symbolic.Trace.t naive T (Z.to_nat P)).
   exists (fun T => Symbolic.Trace.u naive T).

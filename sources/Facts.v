@@ -202,60 +202,71 @@ Module Make (Cell : CELL) (Stencil : STENCIL Cell).
   (* ======================================================================== *)
   Module Symbolic.
 
+    Import WEquivFacts.
+
     (** The correctness of distributed kernels has been defined using traces.
      * In this module, we take advantage of the fact that Stencil code can be
      * written using a simple, non Turing-complete language to automatically
      * synthesize these traces. *)
 
-    Local Open Scope set_scope.
+    Open Scope set_scope.
 
     Definition reflects (s : State.t) (S : set Cell.t) :=
       forall c, State.get_cell s c = true <-> c ∈ S.
+
+    Fixpoint exec (p : Imp.t) (s : State.t) : set Cell.t :=
+      match p with
+        | Nop%prog_t => ∅
+        | (Flag c)%prog_t => ⎨CEval s c⎬
+        | (If b Then p1 Else p2)%prog_t =>
+          if Bool.eval s b then exec p1 s else exec p2 s
+        | (p1;; p2)%prog_t =>
+          exec p1 s ∪ exec p2 s
+        | (Assert _)%prog_t => ∅
+        | (For x From a To b Do q)%prog_t =>
+          ⋃⎨exec q (s⟨x ← k⟩), k ∈〚Arith.eval s a , Arith.eval s b〛⎬
+      end.
+
+    Fixpoint VC (p : Imp.t) (s : State.t) (S : set Cell.t) : Prop :=
+      match p with
+        | Nop%prog_t => True
+        | (Flag c)%prog_t => True
+        | (If b Then p1 Else p2)%prog_t =>
+          if Bool.eval s b then
+            VC p1 s S
+          else
+            VC p2 s S
+        | (p1;; p2)%prog_t =>
+          VC p1 s S /\
+          forall t, weak_equiv s t -> reflects t (S ∪ exec p1 s) ->
+                    VC p2 t (S ∪ exec p1 s)
+        | (Assert P)%prog_t =>
+          reflects s S -> P s
+        | (For x From a To b Do q)%prog_t =>
+          forall i,
+            Arith.eval s a <= i <= Arith.eval s b ->
+            VC q (s⟨x ← i⟩) (exec (For x From a To i Do q)%prog_t s)
+      end.
+
+  End Symbolic.
+
+  Module SymbFacts.
+
+    Import Symbolic.
+    Import WEquivFacts.
 
     Fact reflects_same :
       forall s S1 S2,
         S1 ≡ S2 -> reflects s S1 -> reflects s S2.
     Proof. firstorder. Qed.
 
-    Fixpoint exec (p : KStep.t) (s : State.t) : set Cell.t :=
-      match p with
-        | Nop%step_t => ∅
-        | (Fire c)%step_t => ⎨CEval s c⎬
-        | (If b Then p1 Else p2)%step_t =>
-          if Bool.eval s b then exec p1 s else exec p2 s
-        | (p1;; p2)%step_t =>
-          exec p1 s ∪ exec p2 s
-        | (For x From a To b Do q)%step_t =>
-          ⋃⎨exec q (s⟨x ← k⟩), k ∈〚Arith.eval s a , Arith.eval s b〛⎬
-      end.
-
-    Ltac invert_exec :=
-      repeat match goal with
-        | [ H : Imp.exec _ Imp.NoOp _ |- _ ] =>
-          inversion H; clear H; subst
-        | [ H : Imp.exec _ (Imp.Flag _) _ |- _ ] =>
-          inversion H; clear H; subst
-        | [ H : Imp.exec _ (Imp.Cond _ _ _) _ |- _ ] =>
-          inversion H; clear H; subst
-        | [ H : Imp.exec _ (Imp.Seq _ _) _ |- _ ] =>
-          inversion H; clear H; subst
-        | [ H : Imp.exec _ (Imp.Assert _) _ |- _ ] =>
-          inversion H; clear H; subst
-      end.
-
     Ltac clear_sets :=
       unfold reflects, same, is_in, bin_union, empty, singleton,
       seg_union in *.
 
-    Import WEquivFacts.
-
-    (** The symbolic evaluator returns the same set whenever a state [s] is
-     * transformed into another one [t], as long as [t] is weakly equivalent
-     * to [s]. *)
     Lemma exec_indep :
       forall p,
-      forall s t,
-        weak_equiv s t -> exec p s ≡ exec p t.
+      forall s t, weak_equiv s t -> exec p s ≡ exec p t.
     Proof.
       induction p; simpl; intros.
       + clear_sets; easy.
@@ -267,6 +278,7 @@ Module Make (Cell : CELL) (Stencil : STENCIL Cell).
       + erewrite Bool_eval_weq; try eassumption.
         destruct (Bool.eval t0 t); [now apply IHp1 | now apply IHp2].
       + admit. (* XXX: FIXME, simple fact from set theory. *)
+      + firstorder.
       + clear_sets.
         intro c; split; intro H'.
         * destruct H' as [k [Hk1 Hk2]].
@@ -287,20 +299,101 @@ Module Make (Cell : CELL) (Stencil : STENCIL Cell).
           assumption.
     Qed.
 
+(*    Fact VC_weq :
+      forall p s t S, VC p s S -> weak_equiv s t -> reflects t S -> VC p t S.
+    Proof.
+      induction p; simpl; intros; auto.
+      + rewrite <- (Bool_eval_weq s t0 H0 t).
+        destruct (Bool.eval s t); auto.
+        * apply IHp1 with s; auto.
+        * apply IHp2 with s; auto.
+      + intuition.
+        * apply IHp1 with s; auto.
+        * apply IHp2 with s; auto.
+          admit.
+      +
+    Admitted.
+*)
+    Fact VC_correctness :
+      forall p s S,
+        reflects s S -> VC p s S ->
+        exists t, p // s ⇓ t /\ reflects t (S ∪ exec p s).
+
+    Proof.
+      induction p; simpl; intros s' S H HVC.
+      + (exists s'; split; [constructor|firstorder]).
+      + (exists (State.set_cell s' (CEval s' c))); split.
+        now constructor.
+        destruct s'; unfold reflects, State.set_cell, State.get_cell;
+        simpl.
+        intro c0; destruct (Cell.eq_dec c0 (CEval (z, b) c)); firstorder.
+      + remember (Bool.eval s' t) as b; symmetry in Heqb.
+        destruct b.
+        * destruct (IHp1 s' S H HVC) as [u Hu].
+          exists u; split.
+          constructor; now rewrite Heqb.
+          apply Hu.
+        * destruct (IHp2 s' S H HVC) as [u Hu].
+          exists u; split.
+          constructor; now rewrite Heqb.
+          apply Hu.
+      + destruct HVC as [H1 H2].
+        destruct (IHp1 s' S H H1) as [t [Ht1 Ht2]].
+        specialize (H2 t (ImpFacts.effect_free _ _ _ Ht1) Ht2).
+        destruct (IHp2 t (S ∪ exec p1 s') Ht2 H2)
+          as [u [Hu1 Hu2]].
+        exists u; split.
+        econstructor; eassumption.
+        eapply reflects_same; [|eassumption].
+        admit. (* XXX: FIXME, set theory *)
+      + (exists s'; split).
+        constructor; auto.
+        eapply reflects_same; [|eassumption].
+        firstorder.
+      +
+    Admitted.
+
+(*    Ltac invert_exec :=
+      repeat match goal with
+        | [ H : Imp.exec _ Imp.NoOp _ |- _ ] =>
+          inversion H; clear H; subst
+        | [ H : Imp.exec _ (Imp.Flag _) _ |- _ ] =>
+          inversion H; clear H; subst
+        | [ H : Imp.exec _ (Imp.Cond _ _ _) _ |- _ ] =>
+          inversion H; clear H; subst
+        | [ H : Imp.exec _ (Imp.Seq _ _) _ |- _ ] =>
+          inversion H; clear H; subst
+        | [ H : Imp.exec _ (Imp.Assert _) _ |- _ ] =>
+          inversion H; clear H; subst
+      end.
+
+    Import WEquivFacts.
+
+    Fact exec_reflects :
+      forall F p s t,
+        (denote p F) // s ⇓ t ->
+        forall S, reflects s S -> reflects t (S ∪ exec p s).
+    Admitted.
+
+    Fact PO_weq :
+      forall p s t, PO p s -> weak_equiv s t -> PO p t.
+    Proof.
+    Admitted.
+
     Fact arith_ind :
       forall P,
-        (forall a b s, Arith.eval s a > Arith.eval s b -> P s a b) ->
-        (forall a b s, Arith.eval s a = Arith.eval s b -> P s a b) ->
-        (forall a b s, Arith.eval s a <= Arith.eval s b -> P s a b ->
+        (forall s a b, Arith.eval s a > Arith.eval s b -> P s a b) ->
+        (forall s a b, Arith.eval s a = Arith.eval s b -> P s a b) ->
+        (forall s a b, Arith.eval s a <= Arith.eval s b -> P s a b ->
                        P s (1 + a)%arith_t b) ->
-        forall a b s, P s a b.
+        forall s a b, P s a b.
     Proof.
-      intros P Hi He Hind a b s.
+      intros P Hi He Hind s a b.
       destruct Z_le_gt_dec with (Arith.eval s a) (Arith.eval s b).
       2: now apply Hi.
       assert (X : forall k u v, k >= 0 ->
                                 Arith.eval s u + k = Arith.eval s v -> P s u v).
-      induction k.
+      destruct k.
       intros; apply He; omega.
       admit.
       now destruct 1.
@@ -308,131 +401,46 @@ Module Make (Cell : CELL) (Stencil : STENCIL Cell).
       apply X with (Arith.eval s b - Arith.eval s a); omega.
     Qed.
 
-    Fact exec_reflects :
-      forall F p s t,
-        (denote p F) // s ⇓ t ->
-        forall S, reflects s S -> reflects t (S ∪ exec p s).
+    Fact PO_correct :
+      forall F p s,
+        PO (denote p F) s -> exists t, (denote p F) // s ⇓ t.
     Proof.
-      intro F.
-      induction p; simpl; intros.
-      + invert_exec; clear_sets; firstorder.
-      + invert_exec; clear_sets.
-        simpl in *; intros; split; intros;
-        destruct (Cell.eq_dec c0 (CEval t0 c));
-        firstorder.
-      + invert_exec.
-        destruct (Bool.eval s t); [now apply IHp1|now apply IHp2].
-      + invert_exec.
-        apply reflects_same with ((S ∪ exec p1 s) ∪ exec p2 s).
-        admit. (* XXX: FIXME, set theory here *)
-        specialize (IHp1 s t0 H4 S H0).
-        specialize (IHp2 t0 t H6 (S ∪ exec p1 s) IHp1).
-        apply reflects_same with (((S ∪ exec p1 s) ∪ exec p2 t0));
-          [|eassumption].
-        admit. (* XXX: FIXME, set theory again *)
-      + generalize dependent s0; generalize dependent t0; generalize dependent t.
-        apply arith_ind.
-        * intros.
-          inversion H0; clear H0; subst.
-    Abort.
-
-    (*
-    (** Symbolic execution of [KStep.t] programs. *)
-    Fixpoint exec (p : KStep.t) (s : State.t) : State.t :=
-      match p with
-        | Nop%step_t => s
-        | (Fire c)%step_t => State.set_cell s (CEval s c)
-        | (If b Then p1 Else p2)%step_t =>
-          if Bool.eval s b then exec p1 s else exec p2 s
-        | (p1;; p2)%step_t =>
-          exec p2 (exec p1 s)
-        | (For i From a To b Do q)%step_t =>
-          s (* XXX: FIXME *)
-      end.
-
-    (** Symbolic execution of computation steps. *)
-    Definition comp_exec (k : Kernel.t) (T : Time.t)
-               (s : GState.t) : GState.t :=
-      fun id => exec (Kernel.comp k) ((s id)⟨"id" ← id; "T" ← T⟩).
-
-    (** Symbolic execution of communication steps, first part.  Here we
-     * return a description of what each thread sends to each other
-     * thread. *)
-    Definition send_exec (k : Kernel.t) (T : Time.t) :=
-      fun id to =>
-        exec (Kernel.comm k) State.initial⟨"id" ← id; "to" ← to; "T" ← T⟩.
-
-    (* XXX: This should move. *)
-    Fixpoint ilist' (n : nat) (acc : list Z) : list Z :=
-      match n with
-        | 0%nat => 0 :: acc
-        | S k => ilist' k ((Z.of_nat (S k)) :: acc)
-      end.
-    Definition ilist n := ilist' (Z.to_nat n) nil.
-
-    (** Symbolic execution of communication steps, second part.  It
-     * corresponds to the update of local thread states, after they all
-     * sent what they had to send. *)
-    Definition comm_exec (k : Kernel.t) (T : Time.t) (idMax : Thread.t)
-               (t : GState.t) : GState.t :=
-      fun id =>
-        List.fold_right State.union (t id)
-                        (List.map (fun n => send_exec k T n id) (ilist idMax)).
-
-    Module Trace.
-
-      (** [Trace.s], [Trace.t] and [Trace.u] are the synthetic traces, meant to
-       * be used in the kernel correctness statement of the end user's
-       * program. *)
-
-      Definition u (k : Kernel.t) (T : Time.t) (src to : Thread.t) : State.t :=
-        send_exec k T src to.
-
-      Fixpoint st (k : Kernel.t) (T : Time.t) (idMax : Thread.t)
-      : GState.t * GState.t :=
-        match T with
-          | 0%nat => (fun _ => State.initial,
-                      comp_exec k T (fun _ => State.initial))
-          | S T' =>
-            let (_,t) := st k T' idMax in
-            let s := comm_exec k T idMax t in
-            (s, comp_exec k T s)
-        end.
-
-      Definition s k T idMax := fst (st k T idMax).
-      Definition t k T idMax := snd (st k T idMax).
-
-    End Trace.
-*)
-  End Symbolic.
-
-  Module SymbFacts.
-(*
-    Theorem trace_gen_correct :
-      forall p Tmax idMax,
-        Kernel.correct p Tmax idMax ->
-        Kernel.trace_correct p Tmax idMax
-                             (fun T => Symbolic.Trace.s p T idMax)
-                             (fun T => Symbolic.Trace.t p T idMax)
-                             (fun T => Symbolic.Trace.u p T).
-    Proof.
+      intro F; induction p; simpl; intros.
+      + (exists s; constructor).
+      + (exists (State.set_cell s (CEval s c)); econstructor);
+        now constructor.
+      + remember (Bool.eval s t) as b; symmetry in Heqb.
+        destruct b.
+        * destruct (IHp1 s H) as [u Hu].
+          exists u; constructor.
+          now rewrite Heqb.
+        * destruct (IHp2 s H) as [u Hu].
+          exists u; constructor.
+          now rewrite Heqb.
+      + destruct H as [H1 H2].
+        destruct (IHp1 s H1) as [t Ht].
+        apply (PO_weq _ s t) in H2.
+        destruct (IHp2 t H2) as [u Hu].
+        exists u.
+        econstructor; eassumption.
+        eapply ImpFacts.effect_free; eassumption.
+      + generalize dependent t0; generalize dependent t;
+        generalize dependent s0.
+        intros s0 t t0; pattern s0, t, t0; apply arith_ind; intros.
+        * (exists s1; constructor; omega).
+        * destruct IHp with (s1 ⟨s ← (Arith.eval s1 a)⟩).
+          apply H0; omega.
+          exists x⟨s ← (State.get_var s1 s)⟩.
+          econstructor.
+          omega.
+          eassumption.
+          constructor.
+          rewrite <- (Arith_eval_weq (s1 ⟨s ← (Arith.eval s1 a)⟩) x).
+          rewrite <- (Arith_eval_weq (s1 ⟨s ← (Arith.eval s1 a)⟩) x).
+          (*change (Arith.eval s1 b < 1 + Arith.eval s1 a); omega.
+          eapply ImpFacts.effect_free.*)
     Abort.
 *)
   End SymbFacts.
-
-  (* ======================================================================== *)
-  Module Automation.
-
-    (** Automation for proving correctness of distributed kernels. *)
-
-    (** Syntactic sugar *)
-    Tactic Notation "halts" "after" constr(n) "steps" :=
-      exists (n : Time.t).
-    Tactic Notation "use" constr(n) "threads" :=
-      exists (n : Thread.t).
-
-  End Automation.
-
-  Export Automation.
 
 End Make.
