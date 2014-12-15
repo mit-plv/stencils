@@ -1,16 +1,18 @@
 SOURCES_MODULES := \
-	Main/Stencils \
-	Main/Sets \
-	Univ/Z1 \
-	Univ/Z2 \
-	Model \
-	Facts \
-	Core
+	Sets \
+	Expressions \
+	Problems \
+	Programs \
+	Automation \
+	Domains \
+	Main
 SOURCES_VS  := $(SOURCES_MODULES:%=sources/%.v)
 SOURCES_VOS := $(SOURCES_MODULES:%=sources/%.vo)
 
 EXAMPLES_MODULES := \
-	VN1D_naive
+	HeatEquation2D \
+	AmericanPutStockOptionPricing \
+	PairwiseSequenceAlignment
 EXAMPLES_VS  := $(EXAMPLES_MODULES:%=examples/%.v)
 EXAMPLES_VOS := $(EXAMPLES_MODULES:%=examples/%.vo)
 
@@ -27,3 +29,5 @@ Makefile.coq: Makefile $(SOURCES_VS) $(EXAMPLES_VS)
 
 cleanup: clean
 	rm -rf Makefile.coq
+	rm -rf nlia.cache
+	rm -rf examples/nlia.cache
