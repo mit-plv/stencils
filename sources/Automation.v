@@ -1,5 +1,7 @@
-Require Import List ZArith Psatz.
+Require Import List ZArith.
+Require Import Psatz.
 Import ListNotations.
+Local Open Scope Z_scope.
 
 Require Import Sets.
 
@@ -46,40 +48,74 @@ Fixpoint gen_expr' l ops (n : nat) acc :=
 Definition gen_expr l ops n :=
   rev' (gen_expr' l ops n l).
 
-(** Tries to solve an existential goal by exhaustive search from the list
- * [l] of instanciation candidates and finishing the work with tactic [tac]. *)
-Ltac exists_from_list l tac :=
-  match l with
-    | ?x :: ?xs =>
-      (exists x; now tac) || exists_from_list xs tac
-    | _  => now tac
-  end.
 
-(** Tries to solve the current goals by exhaustive search, from the lists
- * [l] of constants and [ops] of operators. It generates expressions using at
- * most [n] operators and finishes the job with tactic [tac]. *)
-Ltac exists_bruteforce l ops n tac :=
-  let ls :=
-      eval unfold gen_expr, gen_expr', gen_expr_step, map_ops, apply_ops,
-      rev', rev_append in (gen_expr l ops n) in
-      idtac ls.
-(*      exists_from_list ls tac.*)
-
-
+(** ******************************************************************** *)
 
 Tactic Notation "decide" constr(x) "=" constr(y) :=
   destruct (Z.eq_dec x y); subst; simpl in *.
 
-(** * Automation for verification conditions *)
+Ltac inv H := inversion H; subst; clear H.
 
+Ltac simplify_set_hyps :=
+  repeat
+    match goal with
+      | [ H : @is_in _ _ (@empty _) |- _ ] => inv H
+      | [ H : @is_in _ _ (@singleton _ _) |- _ ] => inv H
+      | [ H : @is_in _ _ (@segment _ _) |- _ ] => inv H
+      | [ H : @is_in _ _ (@bin_union _ _ _) |- _ ] => inv H
+      | [ H : @is_in _ _ (@times _ _ _ _) |- _ ] => inv H
+      | [ H : @is_in _ _ (@param_union _ _ _ _) |- _ ] => inv H
 
-Ltac prove_vc l ops n :=
-  try (progress step);
-  match goal with
-    | [ |- _ <= _ ] => nia
-    | [ |- @is_in _ _ (@bin_union _ _ _) ] =>
-      (lhs; now prove_vc l ops n)
-        || (rhs; now prove_vc l ops n)
-    | [ |- exists _, _] =>
-      exists_bruteforce l ops n ltac:(prove_vc l ops n)
+      | [ H : @empty _ _ |- _] => inversion H
+      | [ H : @singleton _ _ _ |- _ ] => red in H
+      | [ H : @segment _ _ _ |- _ ] => red in H
+      | [ H : @bin_union _ _ _ _ |- _ ] => red in H
+      | [ H : @times _ _ _ _ _ |- _ ] => destruct H
+      | [ H : @param_union _ _ _ _ _ |- _ ] => destruct H as [? [? ?]]
+    end.
+
+Ltac iter_exists l tac :=
+  match l with
+    | ?x :: ?xs =>
+      (exists x; tac) || iter_exists xs tac
   end.
+
+Ltac bruteforce' l :=
+  simplify_set_hyps;
+  match goal with
+    | [ |- @is_in _ _ (@singleton _ _) ] =>
+      constructor; red; bruteforce' l
+    | [ |- @is_in _ _ (@segment _ _) ] =>
+      constructor; split; bruteforce' l
+    | [ |- @is_in _ (@pair _ _ _ _) (@times _ _ _ _) ] =>
+      constructor; split; bruteforce' l
+    | [ |- @is_in _ _ (@bin_union _ _ _) ] =>
+      (lhs; bruteforce' l) || (rhs; bruteforce' l)
+    | [ |- @is_in _ _ (@param_union _ _ _ _) ] =>
+      constructor; red; bruteforce' l
+
+    | [ |- forall _, _ ] =>
+      intro; bruteforce' l
+    | [ |- exists _, _ ] =>
+      iter_exists l ltac:(bruteforce' l)
+    | [ |- ~ _ ] =>
+      intro; bruteforce' l
+    | [ |- _ /\ _ ] =>
+      split; bruteforce' l
+    | [ |- _ \/ _ ] =>
+      (left; bruteforce' l) || (right; bruteforce' l)
+    | [ H : _ \/ _ |- _ ] =>
+      destruct H; bruteforce' l
+
+    | [ |- False ] =>
+      simpl in *; nia
+    | [ |- _ <= _ ] =>
+      simpl in *; nia
+    | [ |- _ = _ ] =>
+      simpl in *; nia
+    | [ |- _ = _ ] =>
+      progress f_equal; bruteforce' l
+  end.
+
+Ltac bruteforce :=
+  bruteforce' ([] : list Z).

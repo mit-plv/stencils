@@ -1,9 +1,6 @@
 Require Import StLib.Main.
 Require Import Psatz.
 
-(**
- *)
-
 Parameters T Smax : Z.
 
 Module AmPutOpt <: (PROBLEM Z2).
@@ -36,7 +33,7 @@ Proof.
 
   unfold C, space; simplify sets with ceval.
 
-  firstorder.
+  repeat (intro || split).
 
   - decide i=0.
     + right; step. simpl in *; nia.
@@ -59,5 +56,23 @@ Proof.
       * left. lhs; step.
         exists (i - 1); step. nia.
         exists (i0 + 1); step; nia.
+Qed.
 
+Fact naive_st_correct_auto :
+  exec v C naive_st (C ∪ shape v naive_st).
+Proof.
+
+  symbolic execution.
+
+  unfold C, space; simplify sets with ceval.
+
+  repeat (intro || split).
+
+  - decide i=0; [bruteforce | bruteforce' [i-1; i0]].
+
+  - decide i=0; [bruteforce|].
+    decide i0=0; [bruteforce | bruteforce' [i-1; i0-1]].
+
+  - decide i=0; [bruteforce|].
+    decide i0=Smax; [bruteforce | bruteforce' [i-1; i0+1]].
 Qed.

@@ -92,3 +92,28 @@ Proof.
         exists i0; step.
         exists (i1 + 1); step; nia.
 Qed.
+
+Fact naive_st_correct_auto :
+  exec v C naive_st (C ∪ shape v naive_st).
+Proof.
+
+  symbolic execution.
+
+  unfold C, space; simplify sets with ceval.
+
+  repeat (intro || split).
+
+  - decide i=0; [bruteforce | bruteforce' [i-1; i0; i1]].
+
+  - decide i=0; [bruteforce|].
+    decide i0=0; [bruteforce | bruteforce' [i-1; i0-1; i1]].
+
+  - decide i=0; [bruteforce|].
+    decide i0=I; [bruteforce | bruteforce' [i-1; i0+1; i1]].
+
+  - decide i=0; [bruteforce|].
+    decide i1=0; [bruteforce | bruteforce' [i-1; i0; i1-1]].
+
+  - decide i=0; [bruteforce|].
+    decide i1=J; [bruteforce | bruteforce' [i-1; i0; i1+1]].
+Qed.
