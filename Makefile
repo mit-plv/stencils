@@ -12,7 +12,8 @@ SOURCES_VOS := $(SOURCES_MODULES:%=sources/%.vo)
 EXAMPLES_MODULES := \
 	HeatEquation2D \
 	AmericanPutStockOptionPricing \
-	PairwiseSequenceAlignment
+	PairwiseSequenceAlignment \
+	CacheOblivious1D
 EXAMPLES_VS  := $(EXAMPLES_MODULES:%=examples/%.v)
 EXAMPLES_VOS := $(EXAMPLES_MODULES:%=examples/%.vo)
 
