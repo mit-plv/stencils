@@ -32,4 +32,5 @@ Makefile.coq: Makefile $(SOURCES_VS) $(EXAMPLES_VS)
 cleanup: clean
 	rm -rf Makefile.coq
 	rm -rf nlia.cache
+	rm -rf examples/lia.cache
 	rm -rf examples/nlia.cache
