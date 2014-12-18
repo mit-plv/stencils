@@ -50,47 +50,47 @@ Proof.
   firstorder.
 
   - decide i=0.
-    + right. step. simpl in *; nia.
-    + left. lhs. lhs; step.
-      exists (i - 1); step. nia.
-      exists i0; step.
-      exists i1; step.
+    + right. forward. simpl in *; nia.
+    + left. lhs. lhs; forward.
+      exists (i - 1); forward. nia.
+      exists i0; forward.
+      exists i1; forward.
 
   - decide i=0.
-    + right. step. simpl in *; nia.
+    + right. forward. simpl in *; nia.
     + decide i0=0.
-      * right. step. simpl in *; nia.
-      * left. lhs. lhs; step.
-        exists (i - 1); step. nia.
-        exists (i0 - 1); step. nia. nia.
-        exists i1; step.
+      * right. forward. simpl in *; nia.
+      * left. lhs. lhs; forward.
+        exists (i - 1); forward. nia.
+        exists (i0 - 1); forward. nia. nia.
+        exists i1; forward.
 
   - decide i=0.
-    + right. step. simpl in *; nia.
+    + right. forward. simpl in *; nia.
     + decide i0=I.
-      * right. step. simpl in *; nia.
-      * left. lhs. lhs; step.
-        exists (i - 1); step. nia.
-        exists (i0 + 1); step. nia. nia.
-        exists i1; step.
+      * right. forward. simpl in *; nia.
+      * left. lhs. lhs; forward.
+        exists (i - 1); forward. nia.
+        exists (i0 + 1); forward. nia. nia.
+        exists i1; forward.
 
   - decide i=0.
-    + right. step. simpl in *; nia.
+    + right. forward. simpl in *; nia.
     + decide i1=0.
-      * right. step. simpl in *; nia.
-      * left. lhs. lhs; step.
-        exists (i-1); step. nia.
-        exists i0; step.
-        exists (i1 - 1); step; nia.
+      * right. forward. simpl in *; nia.
+      * left. lhs. lhs; forward.
+        exists (i-1); forward. nia.
+        exists i0; forward.
+        exists (i1 - 1); forward; nia.
 
   - decide i=0.
-    + right. step. simpl in *; nia.
+    + right. forward. simpl in *; nia.
     + decide i1=J.
-      * right. step. simpl in *; nia.
-      * left. lhs. lhs; step.
-        exists (i-1); step. nia.
-        exists i0; step.
-        exists (i1 + 1); step; nia.
+      * right. forward. simpl in *; nia.
+      * left. lhs. lhs; forward.
+        exists (i-1); forward. nia.
+        exists i0; forward.
+        exists (i1 + 1); forward; nia.
 Qed.
 
 Fact naive_st_correct_auto :

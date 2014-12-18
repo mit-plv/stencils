@@ -11,6 +11,8 @@ Module Z1 <: DOMAIN.
   Definition cexpr := aexpr.
   Definition ceval (v : vars) (c : cexpr) : cell :=
     (aeval v c).
+  Definition csimpl (c : cexpr) :=
+    (asimpl c).
 
 End Z1.
 
@@ -20,6 +22,8 @@ Module Z2 <: DOMAIN.
   Definition cexpr := (aexpr * aexpr)%type.
   Definition ceval (v : vars) (c : cexpr) : cell :=
     (aeval v (fst c), aeval v (snd c)).
+  Definition csimpl (c : cexpr) :=
+    (asimpl (fst c), asimpl (snd c)).
 
 End Z2.
 
@@ -29,6 +33,8 @@ Module Z3 <: DOMAIN.
   Definition cexpr := (aexpr * aexpr * aexpr)%type.
   Definition ceval (v : vars) (c : cexpr) : cell :=
     (aeval v (fst (fst c)), aeval v (snd (fst c)), aeval v (snd c)).
+  Definition csimpl (c : cexpr) :=
+    (asimpl (fst (fst c)), asimpl (snd (fst c)), asimpl (snd c)).
 
 End Z3.
 
@@ -39,5 +45,8 @@ Module Z4 <: DOMAIN.
   Definition ceval (v : vars) (c : cexpr) : cell :=
     (aeval v (fst (fst (fst c))), aeval v (snd (fst (fst c))),
      aeval v (snd (fst c)), aeval v (snd c)).
+  Definition csimpl (c : cexpr) :=
+    (asimpl (fst (fst (fst c))), asimpl (snd (fst (fst c))),
+     asimpl (snd (fst c)), asimpl (snd c)).
 
 End Z4.

@@ -1,5 +1,6 @@
 SOURCES_MODULES := \
 	Sets \
+	SetsFacts \
 	Expressions \
 	Problems \
 	Programs \

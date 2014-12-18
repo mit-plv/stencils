@@ -9,6 +9,8 @@ Module PSA_Domain <: DOMAIN.
   Definition cexpr := (Var * aexpr * aexpr)%type.
   Definition ceval (v : vars) (c : cexpr) : cell :=
     (fst (fst c), aeval v (snd (fst c)), aeval v (snd c)).
+  Definition csimpl (c : cexpr) :=
+    (fst (fst c), asimpl (snd (fst c)), asimpl (snd c)).
 
 End PSA_Domain.
 
@@ -56,43 +58,43 @@ Proof.
   firstorder.
 
   - decide i=0.
-    + right. step; simpl in *; nia.
-    + left. lhs; step.
-      exists (i - 1); step. nia.
-      exists i0; step.
-      rhs; rhs; step.
+    + right. forward; simpl in *; nia.
+    + left. lhs; forward.
+      exists (i - 1); forward. nia.
+      exists i0; forward.
+      rhs; rhs; forward.
 
   - decide i=0.
-    + right. step; simpl in *; nia.
-    + left. lhs; step.
-      exists (i - 1); step. nia.
-      exists i0; step.
-      lhs; step.
+    + right. forward; simpl in *; nia.
+    + left. lhs; forward.
+      exists (i - 1); forward. nia.
+      exists i0; forward.
+      lhs; forward.
 
   - decide i0=0.
-    + right. step; simpl in *; nia.
-    + left. lhs. rhs; step.
-      exists (i0 - 1); step. nia.
-      rhs; rhs; step.
+    + right. forward; simpl in *; nia.
+    + left. lhs. rhs; forward.
+      exists (i0 - 1); forward. nia.
+      rhs; rhs; forward.
 
   - decide i0=0.
-    + right. step; simpl in *; nia.
-    + left. lhs. rhs; step.
-      exists (i0 - 1); step. nia.
-      rhs; lhs; step.
+    + right. forward; simpl in *; nia.
+    + left. lhs. rhs; forward.
+      exists (i0 - 1); forward. nia.
+      rhs; lhs; forward.
 
   - decide i=0.
-    + right. step; simpl in *; nia.
+    + right. forward; simpl in *; nia.
     + decide i0=0.
-      * right. step; simpl in *; nia.
-      * left. lhs; lhs; lhs; step.
-        exists (i - 1); step. nia.
-        exists (i0 - 1); step. nia. nia.
-        rhs; rhs; step.
+      * right. forward; simpl in *; nia.
+      * left. lhs; lhs; lhs; forward.
+        exists (i - 1); forward. nia.
+        exists (i0 - 1); forward. nia. nia.
+        rhs; rhs; forward.
 
-  - left. lhs; rhs; step.
+  - left. lhs; rhs; forward.
 
-  - left. rhs; step.
+  - left. rhs; forward.
 Qed.
 
 Fact naive_st_correct_auto :

@@ -9,70 +9,131 @@ Module AmPutOpt <: (PROBLEM Z2).
   Definition space := 〚0, T〛×〚0, Smax〛.
   Definition dep c :=
     match c with
-      | (t,i) =>
-        [(t+1,i); (t+1,i-1); (t+1,i+1)]
+      | (t,s) =>
+        [(t+1,s); (t+1,s-1); (t+1,s+1)]
     end.
 End AmPutOpt.
 
 Module P := Prog Z2 AmPutOpt.
 Import P.
 
-Definition naive_st :=
-  (For "t" From 0 To T Do
-     For "i" From 0 To Smax Do
-         Fire ((T - "t")%aexpr, "i":aexpr))%prog.
+Section Naive.
 
-Definition v := [] : vars.
-Definition C := ∅ : set cell.
+  Definition naive_st :=
+    (For "t" From 0 To T Do
+       For "s" From 0 To Smax Do
+         Fire ((T - "t")%aexpr, "s":aexpr))%prog.
 
-Fact naive_st_correct_semi_auto :
-  exec v C naive_st (C ∪ shape v naive_st).
-Proof.
+  Definition v := [] : vars.
+  Definition C := ∅ : set cell.
 
-  symbolic execution.
+  Fact naive_st_correct_semi_auto :
+    exec v C naive_st (C ∪ shape v naive_st).
+  Proof.
 
-  unfold C, space; simplify sets with ceval.
+    symbolic execution.
 
-  repeat (intro || split).
+    unfold C, space; simplify sets with ceval.
 
-  - decide i=0.
-    + right; step. simpl in *; nia.
-    + left. lhs; step.
-      exists (i-1); step. nia.
-      exists i0; step. nia.
+    repeat (intro || split).
 
-  - decide i=0.
-    + right; step. simpl in *; nia.
-    + decide i0=0.
-      * right; step. simpl in *; nia.
-      * left. lhs; step.
-        exists (i - 1); step. nia.
-        exists (i0 - 1); step; nia.
+    - decide i=0.
+      + right; forward. simpl in *; nia.
+      + left. lhs; forward.
+        exists (i-1); forward. nia.
+        exists i0; forward. nia.
 
-  - decide i=0.
-    + right; step. simpl in *; nia.
-    + decide i0=Smax.
-      * right; step. simpl in *; nia.
-      * left. lhs; step.
-        exists (i - 1); step. nia.
-        exists (i0 + 1); step; nia.
-Qed.
+    - decide i=0.
+      + right; forward. simpl in *; nia.
+      + decide i0=0.
+        * right; forward. simpl in *; nia.
+        * left. lhs; forward.
+          exists (i - 1); forward. nia.
+          exists (i0 - 1); forward; nia.
 
-Fact naive_st_correct_auto :
-  exec v C naive_st (C ∪ shape v naive_st).
-Proof.
+    - decide i=0.
+      + right; forward. simpl in *; nia.
+      + decide i0=Smax.
+        * right; forward. simpl in *; nia.
+        * left. lhs; forward.
+          exists (i - 1); forward. nia.
+          exists (i0 + 1); forward; nia.
+  Qed.
 
-  symbolic execution.
+  Fact naive_st_correct_auto :
+    exec v C naive_st (C ∪ shape v naive_st).
+  Proof.
 
-  unfold C, space; simplify sets with ceval.
+    symbolic execution.
 
-  repeat (intro || split).
+    unfold C, space; simplify sets with ceval.
 
-  - decide i=0; [bruteforce | bruteforce' [i-1; i0]].
+    repeat (intro || split).
 
-  - decide i=0; [bruteforce|].
-    decide i0=0; [bruteforce | bruteforce' [i-1; i0-1]].
+    - decide i=0; [bruteforce | bruteforce' [i-1; i0]].
 
-  - decide i=0; [bruteforce|].
-    decide i0=Smax; [bruteforce | bruteforce' [i-1; i0+1]].
-Qed.
+    - decide i=0; [bruteforce|].
+      decide i0=0; [bruteforce | bruteforce' [i-1; i0-1]].
+
+    - decide i=0; [bruteforce|].
+      decide i0=Smax; [bruteforce | bruteforce' [i-1; i0+1]].
+  Qed.
+
+  Fact naive_st_complete :
+    space ⊆ C ∪ shape v naive_st.
+  Proof.
+    unfold space; simpl; simplify sets with ceval.
+    forward. bruteforce' [T-z; z0].
+  Qed.
+
+End Naive.
+
+Section Triangles.
+
+  Hypothesis T_Smax : Smax >= T * 2.
+
+  Definition triangles_st :=
+    ((For "t" From 0 To T Do
+        For "s" From "t" To Smax - "t" Do
+          Fire ((T - "t")%aexpr, "s":aexpr));;
+     (For "t" From 0 To T Do
+        For "s" From 0 To "t" - 1 Do
+          Fire ((T - "t")%aexpr, "s":aexpr));;
+     (For "t" From 0 To T Do
+        For "s" From Smax - "t" + 1 To Smax Do
+          Fire ((T - "t")%aexpr, "s":aexpr)))%prog.
+
+  Fact triangles_st_correct_auto :
+    exec v C triangles_st (C ∪ shape v triangles_st).
+  Proof.
+
+    symbolic execution.
+
+    unfold C, space; simplify sets with ceval.
+
+    repeat (intro || split).
+
+    - decide i=0; [bruteforce | bruteforce' [i-1; i0]].
+    - decide i=0; [bruteforce|].
+      decide i0=0; [bruteforce | bruteforce' [i-1; i0-1]].
+    - decide i=0; [bruteforce | bruteforce' [i0+1; i-1]].
+
+    - decide i=0; [bruteforce |].
+      decide i0=(i-1); [bruteforce' [i-1] | bruteforce' [i-1; i0]].
+    - decide i=0; [bruteforce|].
+      decide i0=0; [bruteforce | bruteforce' [i-1; i0-1]].
+    - decide i=0; [bruteforce|].
+      decide i0=(i-1); [bruteforce' [i-1; i]|].
+      decide i0=(i-2); [bruteforce' [i-1] | bruteforce' [i-1; i0+1]].
+
+    - decide i=0; [bruteforce|].
+      decide i0=(Smax-i+1); [bruteforce' [Smax-i+1; i-1] | bruteforce' [i-1; i0]].
+    - decide i=0; [bruteforce |].
+      decide i0=(Smax-i+1); [bruteforce' [i-1; Smax-i]|].
+      decide i0=(Smax-i+2); [bruteforce' [i-1; Smax-i+1] | bruteforce' [i-1; i0-1]].
+    - decide i=0; [bruteforce|].
+      decide i0=Smax; [bruteforce | bruteforce' [i-1; i0+1]].
+
+  Qed.
+
+ End Triangles.

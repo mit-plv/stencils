@@ -3,7 +3,7 @@ Export ListNotations.
 Open Scope Z_scope.
 Open Scope string.
 
-Require Export Expressions Sets Problems.
+Require Export Expressions Sets SetsFacts Problems Automation.
 Open Scope set_scope.
 
 Module Prog (D : DOMAIN) (Pb : PROBLEM D).
@@ -75,7 +75,7 @@ Module Prog (D : DOMAIN) (Pb : PROBLEM D).
     forall p v C1 C2,
       exec v C1 p C2 -> forall x, x ∈ C1 -> x ∈ C2.
   Proof.
-    intros p v C1 C2 H; induction H; step'.
+    intros p v C1 C2 H; induction H; forward'; firstorder.
   Qed.
 
   Lemma exec_bin_union_r :
@@ -84,7 +84,7 @@ Module Prog (D : DOMAIN) (Pb : PROBLEM D).
   Proof.
     intros.
     apply eEquiv with C1 C2; [firstorder| |assumption].
-    generalize (exec_extensive _ _ _ _ H); step'.
+    generalize (exec_extensive _ _ _ _ H); forward'; firstorder.
   Qed.
 
   Lemma exec_equiv_r :
@@ -127,6 +127,28 @@ Module Prog (D : DOMAIN) (Pb : PROBLEM D).
   Definition Fire c :=
     fold_right Seq (Flag c) (map (fun d => Assert d) (dep c)).
 
+  Fixpoint psimpl (p : prog) :=
+    match p with
+      | Nop => Nop
+      | Flag c => Flag c
+      | If B p1 p2 =>
+        match bsimpl B with
+          | Bool b => if b then psimpl p1 else psimpl p1
+          | v => If v p1 p2
+        end
+      | Seq p1 p2 => Seq (psimpl p1) (psimpl p2)
+      | Assert c => Assert (csimpl c)
+      | For x a b q =>
+        For x (asimpl a) (asimpl b) (psimpl q)
+    end.
+
+(*  Fact psimpl_correct :
+    forall p v C D, exec v C p D -> exec v C (psimpl p) D.
+  Proof.
+    induction p; intros; simpl; auto.
+    inv H.
+    specialize (IHp1 v C D
+*)
   (** Notations for programs *)
 
   Delimit Scope prog_scope with prog.

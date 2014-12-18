@@ -58,6 +58,109 @@ Fixpoint beval (v : vars) (e : bexpr) : bool :=
     | Or e1 e2  => orb  (beval v e1) (beval v e2)
   end.
 
+(** Simple optimization: A partial evaluator for expressions *)
+
+Fixpoint asimpl (e : aexpr) : aexpr :=
+  match e with
+    | Int c => Int c
+    | Var x => Var x
+    | Add e1 e2 =>
+      match (asimpl e1, asimpl e2) with
+        | (Int c1, Int c2) => Int (c1 + c2)
+        | (v1, v2) => Add v1 v2
+      end
+    | Sub e1 e2 =>
+      match (asimpl e1, asimpl e2) with
+        | (Int c1, Int c2) => Int (c1 - c2)
+        | (v1, v2) => Sub v1 v2
+      end
+    | Mul e1 e2 =>
+      match (asimpl e1, asimpl e2) with
+        | (Int c1, Int c2) => Int (c1 * c2)
+        | (v1, v2) => Mul v1 v2
+      end
+    | Div e1 e2 =>
+      match (asimpl e1, asimpl e2) with
+        | (Int c1, Int c2) => Int (c1 / c2)
+        | (v1, v2) => Div v1 v2
+      end
+    | Mod e1 e2 =>
+      match (asimpl e1, asimpl e2) with
+        | (Int c1, Int c2) => Int (c1 mod c2)
+        | (v1, v2) => Mod v1 v2
+      end
+  end.
+
+Fixpoint bsimpl (e : bexpr) : bexpr :=
+  match e with
+    | Bool b => Bool b
+    | Neg e' =>
+      match bsimpl e' with
+        | Bool b => Bool (negb b)
+        | v => Neg v
+      end
+    | Eq e1 e2 =>
+      match (asimpl e1, asimpl e2) with
+        | (Int c1, Int c2) => Bool (Z.eqb c1 c2)
+        | (v1, v2) => Eq v1 v2
+      end
+    | Lt e1 e2 =>
+      match (asimpl e1, asimpl e2) with
+        | (Int c1, Int c2) => Bool (Z.ltb c1 c2)
+        | (v1, v2) => Lt v1 v2
+      end
+    | Le e1 e2 =>
+      match (asimpl e1, asimpl e2) with
+        | (Int c1, Int c2) => Bool (Z.leb c1 c2)
+        | (v1, v2) => Le v1 v2
+      end
+    | Gt e1 e2 =>
+      match (asimpl e1, asimpl e2) with
+        | (Int c1, Int c2) => Bool (Z.gtb c1 c2)
+        | (v1, v2) => Gt v1 v2
+      end
+    | Ge e1 e2 =>
+      match (asimpl e1, asimpl e2) with
+        | (Int c1, Int c2) => Bool (Z.geb c1 c2)
+        | (v1, v2) => Ge v1 v2
+      end
+    | And e1 e2 =>
+      match (bsimpl e1, bsimpl e2) with
+        | (Bool b1, Bool b2) => Bool (andb b1 b2)
+        | (v1, v2) => And v1 v2
+      end
+    | Or e1 e2  =>
+      match (bsimpl e1, bsimpl e2) with
+        | (Bool b1, Bool b2) => Bool (orb b1 b2)
+        | (v1, v2) => Or v1 v2
+      end
+  end.
+
+Fact asimpl_correct :
+  forall e v, aeval v e = aeval v (asimpl e).
+Proof.
+  induction e; intros; try reflexivity;
+  specialize (IHe1 v); specialize (IHe2 v); simpl;
+  destruct (asimpl e1), (asimpl e2);
+  now rewrite IHe1, IHe2.
+Qed.
+
+Fact bsimpl_correct :
+  forall e v, beval v e = beval v (bsimpl e).
+Proof.
+  induction e; intros; try reflexivity;
+  try (simpl;
+       generalize (asimpl_correct a v); intro Ha;
+       generalize (asimpl_correct a0 v); intro Ha0;
+       destruct (asimpl a), (asimpl a0);
+       now rewrite Ha, Ha0);
+  try (specialize (IHe1 v); specialize (IHe2 v); simpl;
+       destruct (bsimpl e1), (bsimpl e2);
+       now rewrite IHe1, IHe2).
+  specialize (IHe v); simpl.
+  destruct (bsimpl e); now rewrite IHe.
+Qed.
+
 (** Notations for arithmetic expressions *)
 
 Delimit Scope aexpr_scope with aexpr.
