@@ -111,10 +111,36 @@ Section Triangles.
 
     unfold C, space; simplify sets with ceval.
 
+    Arguments Zplus x y : simpl never.
+    Arguments Zminus m n : simpl never.
+
     repeat (intro || split).
 
+(*    Ltac get_vars acc k :=
+      match goal with
+        | [ x : Z |- _ ] =>
+          match acc with
+            | context[x] => fail 1
+            | _ => get_vars (x :: acc) k
+          end
+        | _ => k acc
+(*          let l := constr:(gen_expr acc [Zplus; Zminus] 1) in
+          let v := fresh in
+          pose (v := l); unfold gen_expr, rev' in v; simpl in v;
+          let ls := eval unfold v in v in
+
+          bruteforce' ls*)
+      end.
+    Ltac candidates :=
+      get_vars ([] : list Z)
+               ltac:(fun ls =>
+                       let ls' :=
+                           eval simpl in
+                       (ls ++ map (fun x => x+1) ls
+                           ++ map (fun x => x-1) ls)%list in
+                     bruteforce' ls').*)
     - decide i=0; [bruteforce | bruteforce' [i-1; i0]].
-    - decide i=0; [bruteforce|].
+    - decide i=0; [bruteforce |].
       decide i0=0; [bruteforce | bruteforce' [i-1; i0-1]].
     - decide i=0; [bruteforce | bruteforce' [i0+1; i-1]].
 
@@ -136,4 +162,4 @@ Section Triangles.
 
   Qed.
 
- End Triangles.
+End Triangles.

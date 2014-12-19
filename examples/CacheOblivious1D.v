@@ -1,6 +1,5 @@
 Require Import StLib.Main.
 Require Import Psatz.
-Require Import Program.
 
 Parameters T N : Z.
 
@@ -198,59 +197,73 @@ Proof.
   now apply Time_cut_WF_bot.
 Qed.
 
-Ltac clear_reflections :=
-  repeat match goal with
-           | [ H : (_ =? _) = true |- _ ] =>
-             apply Z.eqb_eq in H
-           | [ H : (_ =? _) = false |- _ ] =>
-             apply Z.eqb_neq in H
-           | [ H : (_ <? _) = true |- _ ] =>
-             apply Z.ltb_lt in H
-           | [ H : (_ <? _) = false |- _ ] =>
-             apply Z.ltb_ge in H
-         end.
-
 Ltac prove_WF :=
-  clear_reflections;
-  first [now apply Spatial_cut_WF_l
-        |now apply Spatial_cut_WF_r
-        |now apply Time_cut_WF_bot
-        |now apply Time_cut_WF_top].
+  first [ apply Spatial_cut_WF_l
+        | apply Spatial_cut_WF_r
+        | apply Time_cut_WF_bot
+        | apply Time_cut_WF_top]; (assumption || omega).
 
 Ltac prove_Vol :=
   unfold WF in * |-;
   match goal with
     | [ |- (Z.abs_nat _ < Z.abs_nat _)%nat ] =>
-      clear_reflections;
-        apply Zabs_nat_lt; split;
-        [apply Z.ge_le, WF_Vol_ge0; prove_WF|];
-        first [apply Spatial_cut_Vol_l
-              |apply Spatial_cut_Vol_r
-              |apply Time_cut_Vol_bot
-              |apply Time_cut_Vol_top];
-        (assumption || omega)
+      apply Zabs_nat_lt; split;
+      [apply Z.ge_le, WF_Vol_ge0; prove_WF|];
+      first [ apply Spatial_cut_Vol_l
+            | apply Spatial_cut_Vol_r
+            | apply Time_cut_Vol_bot
+            | apply Time_cut_Vol_top];
+      (assumption || omega)
   end.
 
-Arguments Zminus m n : simpl never.
-Local Obligation Tactic := program_simpl; try (prove_WF || prove_Vol).
+Definition WF_trapezoid := { Tp : trapezoid | WF Tp }.
 
-Program Fixpoint Walk1 (Tp : trapezoid | WF Tp) {measure (Z.abs_nat (Vol Tp))} :=
-  match Tp with
-    | (t0, t1, x0, v0, x1, v1) =>
-      let h := t1 - t0 in
-      if dec (h =? 1) then
-        For "x" From x0 To (x1 - 1) Do
-          Fire (t0 : aexpr, "x" : aexpr)
-      else
-        if dec (h * 4 <? (x1 - x0) * 2 + (v1 - v0) * h) then
-          let xm := ((x0 + x1) * 2 + (v0 + v1 + 2) * h) / 4 in
-          Walk1 (@exist _ _ (t0, t1, x0, v0, xm, -1) _);;
-          Walk1 (@exist _ _ (t0, t1, xm, -1, x1, v1) _)
-        else
-          let s := h / 2 in
-          Walk1 (@exist _ _ (t0, t0 + s, x0, v0, x1, v1) _);;
-          Walk1 (@exist _ _ (t0 + s, t1, x0 + v0 * s, v0, x1 + v1 * s, v1) _)
-  end%prog.
+Definition Vol_order (Tp Tp' : WF_trapezoid) :=
+  (Z.abs_nat (Vol (proj1_sig Tp)) < Z.abs_nat (Vol (proj1_sig Tp')))%nat.
+
+Lemma Vol_order_wf' :
+  forall k Tp, (Z.abs_nat (Vol (proj1_sig Tp)) <= k -> Acc Vol_order Tp)%nat.
+Proof.
+  unfold Vol_order; induction k; intros.
+  - inversion H.
+    constructor; intros. rewrite H1 in H0.
+    inversion H0.
+  - constructor; intros. apply IHk; omega.
+Defined.
+
+Lemma Vol_order_wf :
+  well_founded Vol_order.
+Proof. red; intro. eapply Vol_order_wf'; eauto. Defined.
+
+Arguments Zminus m n : simpl never.
+Arguments Zmult x y : simpl never.
+
+Definition Walk1 : { Tp : trapezoid | WF Tp } -> prog.
+  refine (Fix (R := Vol_order) _ (fun _ => prog) (fun Tp self => _)).
+  apply Vol_order_wf.
+
+  destruct Tp as [[[[[[t0 t1] x0] v0] x1] v1] H].
+  refine
+    (let h := t1 - t0 in
+     if (Z_eq_dec h 1) then
+       For "x" From x0 To (x1 - 1) Do
+         Fire (t0 : aexpr, "x" : aexpr)
+     else
+       if (Z_lt_ge_dec (h * 4) ((x1 - x0) * 2 + (v1 - v0) * h)) then
+         let xm := ((x0 + x1) * 2 + (v0 + v1 + 2) * h) / 4 in
+         self (exist _ (t0, t1, x0, v0, xm, -1) _) _;;
+         self (exist _ (t0, t1, xm, -1, x1, v1) _) _
+       else
+         let s := h / 2 in
+         self (exist _ (t0, t0 + s, x0, v0, x1, v1) _) _;;
+              self (exist _ (t0 + s, t1, x0 + v0 * s, v0, x1 + v1 * s, v1) _) _)%prog;
+    simpl; unfold Vol_order, h in *; prove_Vol.
+  Grab Existential Variables.
+  unfold h in *; prove_WF.
+  unfold h in *; prove_WF.
+  unfold h in *; prove_WF.
+  unfold h in *; prove_WF.
+Defined.
 
 Example WF_ex :
   WF (0,5,0,0,5,0).
@@ -258,13 +271,93 @@ Proof. unfold WF; intuition omega. Qed.
 
 Eval compute in psimpl (Walk1 (@exist _ _ (0, 5, 0, 0, 5, 0) WF_ex)).
 
-(*Theorem Walk1_shape :
-  forall t0 t1 x0 v0 x1 v1 v
-         (H : WF (t0, t1, x0, v0, x1, v1)),
-    shape v (Walk1 (@exist _ _ (t0, t1, x0, v0, x1, v1) H)) ≡
-          (⋃⎨⎨(x0 + v0 * (t - t0), x0 + v1 * (t - t0))⎬, t ∈〚t0, t1〛⎬).
+Definition trapezoid_shape (Tp : WF_trapezoid) :=
+  match proj1_sig Tp with
+    | (t0, t1, x0, v0, x1, v1) =>
+      (⋃⎨⎨t⎬×〚x0 + v0 * (t - t0), x1 + v1 * (t - t0)-1〛, t ∈〚t0, t1-1〛⎬)
+  end.
+
+Theorem Walk1_shape :
+  forall v Tp, shape v (Walk1 Tp) ≡ (trapezoid_shape Tp).
 Proof.
-  intros.
-  compute.
-  unfold Walk1, Fix_sub, Walk1_obligation_9.
-  induction (Z.)*)
+  intro v.
+  refine
+    (well_founded_ind Vol_order_wf
+                      (fun Tp => shape v (Walk1 Tp) ≡ trapezoid_shape Tp)
+                      _); intros.
+  destruct x as [[[[[[t0 t1] x0] v0] x1] v1] Hx].
+  unfold Walk1; rewrite Fix_eq; fold Walk1.
+  destruct (Z.eq_dec (t1 - t0) 1).
+
+  - unfold trapezoid_shape; simpl.
+    simplify sets with ceval.
+    forward.
+    + exists t0; forward. nia.
+      destruct x; injection H2; intros.
+      forward; subst; simpl; nia.
+    + exists (snd x); forward. nia. destruct x. simpl in *. nia.
+      destruct x; simpl in *. forward. nia.
+
+  - destruct (Z_lt_ge_dec ((t1 - t0) * 4)
+                          ((x1 - x0) * 2 + (v1 - v0) * (t1 - t0))).
+    + simpl.
+      repeat (rewrite H);
+        [ | unfold Vol_order; prove_Vol | unfold Vol_order; prove_Vol].
+      unfold trapezoid_shape; simpl.
+      forward; destruct x; subst; simpl in *.
+
+      * (exists z; forward). simpl.
+        match goal with [ _ : z0 <= ?a |- _ ] => transitivity a end.
+        assumption.
+        clear_divs; intros; nia.
+
+      * (exists z; forward). simpl.
+        match goal with [ _ : ?a <= z0 |- _ ] => transitivity a end.
+        clear_divs; intros; nia.
+        assumption.
+
+      * destruct (Z_le_gt_dec z0
+                              (((x0 + x1) * 2 + (v0 + v1 + 2) * (t1 - t0)) / 4 +
+                               (-1) * (z - t0) - 1)).
+        lhs; forward; exists z; forward.
+        rhs; forward; exists z; forward; simpl; omega.
+
+    + simpl.
+      repeat (rewrite H);
+        [ | unfold Vol_order; prove_Vol | unfold Vol_order; prove_Vol].
+      unfold trapezoid_shape; simpl.
+      forward; destruct x; subst; simpl in *.
+
+      * (exists z; forward). simpl.
+        match goal with [ _ : z <= ?a |- _ ] => transitivity a end.
+        assumption.
+        clear_divs; intros; omega.
+
+      * (exists z; forward).
+        match goal with [ _ : ?a <= z |- _ ] => transitivity a end.
+        clear_divs; intros; omega.
+        assumption.
+
+        simpl.
+        match goal with [ _ : ?a <= z0 |- _ ] => transitivity a end.
+        clear_divs; intros; nia.
+        assumption.
+
+        simpl.
+        match goal with [ _ : z0 <= ?a |- _ ] => transitivity a end.
+        assumption.
+        clear_divs; intros; nia.
+
+      * destruct (Z_le_gt_dec z (t0 + (t1 - t0) / 2 - 1)).
+        lhs; forward; exists z; forward.
+        rhs; forward. exists z; forward; simpl; nia.
+
+  - intros.
+    destruct x as [[[[[[t0' t1'] x0'] v0'] x1'] v1'] H'].
+    destruct (Z.eq_dec (t1' - t0') 1); [reflexivity | ].
+    destruct (Z_lt_ge_dec ((t1' - t0') * 4)
+                          ((x1' - x0') * 2 + (v1' - v0') * (t1' - t0'))).
+    repeat rewrite H0; reflexivity.
+    repeat rewrite H0; reflexivity.
+
+Qed.
