@@ -1,0 +1,47 @@
+================================================================================
+  StLib -- README
+================================================================================
+
+
+ (1) About StLib
+ ---------------
+
+  StLib is a Coq library allowing the user to define stencil problems, write
+sequential and distributed stencil programs, and provides automation support to
+prove their correctness.
+
+
+ (2) Compilation
+ ---------------
+
+ Command           |     Result
+-------------------+-------------------------------------------------
+ $ make sources    |     Compiles the library
+ $ make examples   |     Compiles the examples
+ $ make            |     Equivalent to ``$ make sources examples''
+ $ make cleanup    |     Cleans up the entire directory
+
+
+ (3) Project map
+ ---------------
+
+The project is organized as follows:
+
+.
+├─ examples
+│  ├── AmericanPutStockOptionPricing.v
+│  ├── CacheOblivious1D.v
+│  ├── HeatEquation2D.v
+│  └── PairwiseSequenceAlignment.v
+└─ sources
+   ├── Automation.v          Automation support for stencil code
+   │                           correctness proofs.
+   ├── Domains.v             A few widely-used domains.
+   ├── Expressions.v         Expressions and their evaluation
+   ├── Main.v                Main header file.
+   ├── Problems.v            Domains and Stencils.
+   ├── Programs.v            Formalization of sequential programs
+   │                           and their correctness.
+   ├── Sets.v                Definitions and notations for
+   │                           set-theoretic reasoning.
+   └── SetsFacts.v           Simplifying sets by rewriting.
