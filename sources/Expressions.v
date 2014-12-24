@@ -1,8 +1,9 @@
+(* From the standard library. *)
 Require Import ZArith String List.
 Import ListNotations.
 Local Open Scope Z_scope.
 
-(** Arithmetic and boolean expressions *)
+(** * Arithmetic and boolean expressions. *)
 
 Inductive aexpr : Set :=
 | Int : Z -> aexpr
@@ -24,16 +25,19 @@ Inductive bexpr : Set :=
 | And  : bexpr -> bexpr -> bexpr
 | Or   : bexpr -> bexpr -> bexpr.
 
-(** Environments and expression evaluation *)
+(** * Environments and expression evaluation. *)
 
 Definition vars := list (string * Z).
 
+(** [lookup v x] returns the value of variable [x] in environment [v].  Default
+ * return value is [0]. *)
 Fixpoint lookup (v : vars) (x : string) : Z :=
   match v with
     | (y,k) :: vs => if string_dec y x then k else lookup vs x
     | _ => 0
   end.
 
+(** Evaluation of an arithmetic expression in a given environment. *)
 Fixpoint aeval (v : vars) (e : aexpr) : Z :=
   match e with
     | Int c => c
@@ -45,6 +49,7 @@ Fixpoint aeval (v : vars) (e : aexpr) : Z :=
     | Mod e1 e2 => aeval v e1 mod aeval v e2
   end.
 
+(** Evaluation of a boolean expression in a given environment. *)
 Fixpoint beval (v : vars) (e : bexpr) : bool :=
   match e with
     | Bool b => b
@@ -58,8 +63,9 @@ Fixpoint beval (v : vars) (e : bexpr) : bool :=
     | Or e1 e2  => orb  (beval v e1) (beval v e2)
   end.
 
-(** Simple optimization: A partial evaluator for expressions *)
+(** * Simple optimization: Constants evaluation and simplification. *)
 
+(* A partial evaluator for arithmetic expressions. *)
 Fixpoint asimpl (e : aexpr) : aexpr :=
   match e with
     | Int c => Int c
@@ -91,6 +97,7 @@ Fixpoint asimpl (e : aexpr) : aexpr :=
       end
   end.
 
+(* A partial evaluator for boolean expressions. *)
 Fixpoint bsimpl (e : bexpr) : bexpr :=
   match e with
     | Bool b => Bool b
@@ -136,6 +143,8 @@ Fixpoint bsimpl (e : bexpr) : bexpr :=
       end
   end.
 
+(** [asimpl e] returns an expression that, in any environment [v], evaluates to
+ * [aeval v e]. *)
 Fact asimpl_correct :
   forall e v, aeval v e = aeval v (asimpl e).
 Proof.
@@ -145,6 +154,8 @@ Proof.
   now rewrite IHe1, IHe2.
 Qed.
 
+(** [bsimpl e] returns an expression that, in any environment [v], evaluates to
+ * [beval v e]. *)
 Fact bsimpl_correct :
   forall e v, beval v e = beval v (bsimpl e).
 Proof.
@@ -161,7 +172,7 @@ Proof.
   destruct (bsimpl e); now rewrite IHe.
 Qed.
 
-(** Notations for arithmetic expressions *)
+(** * Notations for arithmetic expressions *)
 
 Delimit Scope aexpr_scope with aexpr.
 
@@ -179,7 +190,7 @@ Notation "e1 / e2" :=
 Notation "e1 'mod' e2" :=
   (Mod e1%aexpr e2%aexpr) : aexpr_scope.
 
-(** Notations for boolean expressions *)
+(** * Notations for boolean expressions *)
 (* XXX: Fix precedence levels. *)
 
 Delimit Scope bexpr_scope with bexpr.

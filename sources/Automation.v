@@ -1,8 +1,12 @@
+(* From the standard library. *)
 Require Import List ZArith Psatz.
 Import ListNotations.
 Local Open Scope Z_scope.
 
+(* From StLib. *)
 Require Import Sets.
+
+(** Warmup: A few simple, handy tactics. *)
 
 Ltac inv H := inversion H; subst; clear H.
 
@@ -69,7 +73,7 @@ Ltac forward :=
     first [assumption | reflexivity |
            progress simplify_goal | progress simplify_hyps | double_incl].
 
-(** [step] does set theoretic reasoning.  [lhs] and [rhs] allow one to prove
+(** [step] does set-theoretic reasoning.  [lhs] and [rhs] allow one to prove
  * that an element belongs to a binary union, by proving that it belongs to one
  * of the two given sets. *)
 

@@ -1,5 +1,7 @@
+(* From the standard library. *)
 Require Import ZArith.
 
+(* From StLib. *)
 Require Import Expressions Programs.
 
 (** A few classical domains, to reduce the boilerplate to be written by the

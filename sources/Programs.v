@@ -1,8 +1,10 @@
+(* From the standard library. *)
 Require Export ZArith String List.
 Export ListNotations.
 Open Scope Z_scope.
 Open Scope string.
 
+(* From StLib. *)
 Require Export Expressions Sets SetsFacts Problems Automation.
 Open Scope set_scope.
 
@@ -11,7 +13,7 @@ Module Prog (D : DOMAIN) (Pb : PROBLEM D).
   Export D.
   Export Pb.
 
-  (** Programs and their operational semantics *)
+  (** * Programs and their operational semantics. *)
 
   Inductive prog : Type :=
   | Nop: prog
@@ -44,7 +46,7 @@ Module Prog (D : DOMAIN) (Pb : PROBLEM D).
   | eEquiv : forall v C1 C1' C2 C2' p,
                C1 ≡ C1' -> C2 ≡ C2' -> exec v C1 p C2 -> exec v C1' p C2'.
 
-  (** Symbolic execution of programs and verification condition generator *)
+  (** * Symbolic execution of programs and verification condition generator. *)
 
   Fixpoint shape (v : vars) (p : prog) : array :=
     match p with
@@ -69,7 +71,7 @@ Module Prog (D : DOMAIN) (Pb : PROBLEM D).
                   vc ((x,i) :: v) (C ∪ shape v (For x a (Int (i-1)) q)) q
     end.
 
-  (** A few properties of programs *)
+  (** * A few properties of programs. *)
 
   Lemma exec_extensive :
     forall p v C1 C2,
@@ -92,8 +94,10 @@ Module Prog (D : DOMAIN) (Pb : PROBLEM D).
       exec v C p C1 -> C1 ≡ C2 -> exec v C p C2.
   Proof. intros; eapply eEquiv; [reflexivity| |]; eassumption. Qed.
 
-  (** Main result: Correctness of both the symbolic execution function and the
-   * verification condition generator *)
+  (** Main correctness result.
+   *
+   * Correctness of both the symbolic execution function and the verification
+   * condition generator. *)
 
   Theorem vc_sexec_correct :
     forall p v C,
@@ -121,11 +125,18 @@ Module Prog (D : DOMAIN) (Pb : PROBLEM D).
       now apply H.
   Qed.
 
+  (** Handy tactic applying the main correctness result. *)
   Tactic Notation "symbolic" "execution" :=
     apply vc_sexec_correct; simpl.
 
+  (** [Fire c] is meant to be used when one wants to compute cell [c].  It
+   * automatically check dependencies. *)
   Definition Fire c :=
     fold_right Seq (Flag c) (map (fun d => Assert d) (dep c)).
+
+  (** * Program simplification.
+   *
+   * For now, it only evaluates constants. *)
 
   Fixpoint psimpl (p : prog) :=
     match p with
@@ -142,14 +153,16 @@ Module Prog (D : DOMAIN) (Pb : PROBLEM D).
         For x (asimpl a) (asimpl b) (psimpl q)
     end.
 
-(*  Fact psimpl_correct :
+  (** XXX: Prove the correctness of program simplification.*)
+  (*  Fact psimpl_correct :
     forall p v C D, exec v C p D -> exec v C (psimpl p) D.
   Proof.
     induction p; intros; simpl; auto.
     inv H.
     specialize (IHp1 v C D
-*)
-  (** Notations for programs *)
+   *)
+
+  (** * Notations for programs *)
 
   Delimit Scope prog_scope with prog.
 
