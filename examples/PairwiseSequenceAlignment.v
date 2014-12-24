@@ -20,9 +20,10 @@ Module PSA <: (PROBLEM PSA_Domain).
   Local Open Scope aexpr.
   Import PSA_Domain.
 
-  Definition space := ⎨P⎬ ×〚0, M〛×〚0, N〛
-                       ∪ ⎨Q⎬ ×〚0, M〛×〚0, N〛
-                       ∪ ⎨D⎬ ×〚0, M〛×〚0, N〛.
+  Definition Var_set := fun _ : Var => True.
+
+  Definition space := Var_set ×〚0, M〛×〚0, N〛.
+
   Definition dep c :=
     match c with
       | (P,m,n) =>
