@@ -31,6 +31,7 @@ Module Type PROBLEM (D : DOMAIN).
   Export D.
 
   Parameter space : set cell.
+  Parameter target : set cell.
   Parameter dep : cexpr -> list cexpr.
 
 End PROBLEM.

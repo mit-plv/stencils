@@ -4,6 +4,7 @@ SOURCES_MODULES := \
 	Expressions \
 	Problems \
 	Programs \
+	Kernels \
 	Automation \
 	Domains \
 	Main

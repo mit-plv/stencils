@@ -125,6 +125,9 @@ Module Prog (D : DOMAIN) (Pb : PROBLEM D).
       now apply H.
   Qed.
 
+  Definition correct p :=
+    exec [] ∅ p (∅ ∪ shape [] p) /\ shape [] p ⊆ target.
+
   (** Handy tactic applying the main correctness result. *)
   Tactic Notation "symbolic" "execution" :=
     apply vc_sexec_correct; simpl.
@@ -166,6 +169,8 @@ Module Prog (D : DOMAIN) (Pb : PROBLEM D).
 
   Delimit Scope prog_scope with prog.
 
+  Notation "'Nop'" :=
+    Nop : prog_scope.
   Notation "'If' b 'Then' p1 'Else' p2" :=
     (If b%bexpr p1 p2) (at level 80, right associativity) : prog_scope.
   Notation "p1 ;; p2" :=

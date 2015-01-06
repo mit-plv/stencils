@@ -7,6 +7,7 @@ Module AmPutOpt <: (PROBLEM Z2).
   Local Open Scope aexpr.
 
   Definition space := 〚0, T〛×〚0, Smax〛.
+  Definition target := 〚0, T〛×〚0, Smax〛.
   Definition dep c :=
     match c with
       | (t,s) =>

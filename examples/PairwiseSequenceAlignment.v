@@ -23,6 +23,7 @@ Module PSA <: (PROBLEM PSA_Domain).
   Definition Var_set := fun _ : Var => True.
 
   Definition space := Var_set ×〚0, M〛×〚0, N〛.
+  Definition target := Var_set ×〚0, M〛×〚0, N〛.
 
   Definition dep c :=
     match c with

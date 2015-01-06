@@ -7,6 +7,7 @@ Module ThreePointStencil <: (PROBLEM Z2).
   Local Open Scope aexpr.
 
   Definition space := 〚0, T〛×〚0, N〛.
+  Definition target := 〚0, T〛×〚0, N〛.
   Definition dep c :=
     match c with
       | (t,x) =>

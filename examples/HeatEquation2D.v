@@ -12,6 +12,7 @@ Module Jacobi2D <: (PROBLEM Z3).
   Local Open Scope aexpr.
 
   Definition space := 〚0, T〛×〚0, I〛×〚0, J〛.
+  Definition target := 〚0, T〛×〚0, I〛×〚0, J〛.
   Definition dep c :=
     match c with
       | (t,i,j) =>
