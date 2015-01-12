@@ -1,7 +1,7 @@
 (* From StLib. *)
 Require Export Programs.
 
-Module Kern  (D : DOMAIN) (Pb : PROBLEM D).
+Module Kern (D : DOMAIN) (Pb : PROBLEM D).
 
   Module P := Prog D Pb.
   Export P.
@@ -72,7 +72,7 @@ Module Kern  (D : DOMAIN) (Pb : PROBLEM D).
   End Comm.
 
   Definition thread := Z.
-  Definition time := nat.
+  Definition time := Z.
 
   (** [kern] is the type of distributed programs.  A distributed program
    * is defined by two programs, representing respectively computation steps
@@ -95,12 +95,13 @@ Module Kern  (D : DOMAIN) (Pb : PROBLEM D).
         comm : code
       }.
 
+  (** We now turn to semantics and correctness of distributed programs. *)
   Record trace :=
     makeTrace
       {
-        beforeComp : nat -> thread -> array;
-        sends      : nat -> thread -> thread -> array;
-        afterComp  : nat -> thread -> array
+        beforeComp : time -> thread -> array;
+        afterComp  : time -> thread -> array;
+        sends      : time -> thread -> thread -> array
       }.
 
   Definition kexec (k : kern) (tr : trace)
@@ -112,8 +113,8 @@ Module Kern  (D : DOMAIN) (Pb : PROBLEM D).
     (* We go from [beforeComp tr T id] to [afterComp tr T id] through a
      * computation step. *)
     (forall id T,
-       0 <= id <= idMax -> (T <= TMax)%nat ->
-       exec [("id", id); ("T", Z.of_nat T)]
+       0 <= id <= idMax -> 0 <= T <= TMax ->
+       exec [("id", id); ("T", T)]
             (beforeComp tr T id)
             (Comp.denote (comp k))
             (afterComp tr T id))
@@ -122,8 +123,8 @@ Module Kern  (D : DOMAIN) (Pb : PROBLEM D).
     (* [sends tr T id to] represents what is sent by thread [id] to thread
      * [to] at step [T]. *)
     (forall id to T,
-       0 <= id <= idMax -> 0 <= to <= idMax -> (T <= TMax)%nat ->
-       exec [("id", id); ("to", to); ("T", Z.of_nat T)]
+       0 <= id <= idMax -> 0 <= to <= idMax -> 0 <= T <= TMax ->
+       exec [("id", id); ("to", to); ("T", T)]
             ∅
             (Comm.denote (comm k))
             (sends tr T id to))
@@ -131,7 +132,7 @@ Module Kern  (D : DOMAIN) (Pb : PROBLEM D).
 
     (* A thread cannot send a value it does not know. *)
     (forall id to T,
-       0 <= id <= idMax -> 0 <= to <= idMax -> (T <= TMax)%nat ->
+       0 <= id <= idMax -> 0 <= to <= idMax -> 0 <= T <= TMax ->
        sends tr T id to ⊆ afterComp tr T id)
     /\
 
@@ -139,12 +140,97 @@ Module Kern  (D : DOMAIN) (Pb : PROBLEM D).
      * from what it knew after computation step at time [T] and what other
      * threads sent to it. *)
     (forall id T,
-       0 <= id <= idMax -> (T <= TMax)%nat ->
-       beforeComp tr (1+T) id ⊆
+       0 <= id <= idMax -> 0 <= T <= TMax ->
+       beforeComp tr (T+1) id ⊆
                   afterComp tr T id
-                  ∪ ⋃⎨sends tr T from id, from ∈〚0, idMax〛⎬).
+                  ∪ ⋃⎨sends tr T from id, from ∈〚0, idMax〛⎬)
+    /\
+
+    (* Completeness *)
+    (target ⊆ ⋃⎨beforeComp tr (TMax+1) id, id ∈〚0, idMax〛⎬).
 
   Definition kcorrect (k : kern) (idMax : thread) (TMax : time) :=
     exists tr, kexec k tr idMax TMax.
+
+  (** Trace synthesizer *)
+
+  Definition sends_synth (k : kern) (idMax : thread) :=
+    fun T id to =>
+      shape [("id", id); ("to", to); ("T", T)]
+            (Comm.denote (comm k)).
+
+  Definition computes_synth (k : kern) (idMax : thread) :=
+    fun T id =>
+      shape [("id", id); ("T", T)]
+            (Comp.denote (comp k)).
+
+  Definition bf_synth (k : kern) (idMax : thread) :=
+    fun T id =>
+      (⋃⎨computes_synth k idMax T' id, T' ∈〚0, T-1〛⎬)
+        ∪ (⋃⎨⋃⎨sends_synth k idMax T' from id, from ∈〚0, idMax〛⎬,
+             T' ∈〚0, T-1〛⎬).
+
+  Definition af_synth (k : kern) (idMax : thread) :=
+    fun T id =>
+      (⋃⎨computes_synth k idMax T' id, T' ∈〚0, T〛⎬)
+        ∪ (⋃⎨⋃⎨sends_synth k idMax T' from id, from ∈〚0, idMax〛⎬,
+             T' ∈〚0, T-1〛⎬).
+
+  Definition trace_synth (k : kern) (idMax : thread) :=
+    makeTrace (bf_synth k idMax)
+              (af_synth k idMax)
+              (sends_synth k idMax).
+
+  (** Main correctness result. *)
+  Theorem trace_synth_correct :
+    forall k idMax TMax,
+      (forall T id,
+         0 <= id <= idMax -> 0 <= T <= TMax ->
+         vc [("id", id); ("T", T)]
+            (⋃⎨computes_synth k idMax T' id, T' ∈〚0, T - 1〛⎬
+             ∪ ⋃⎨⋃⎨sends_synth k idMax T' from id, from ∈〚0, idMax〛⎬,
+                 T' ∈〚0, T - 1〛⎬)
+            (Comp.denote (comp k))) ->
+      (forall T id to,
+         0 <= id <= idMax -> 0 <= to <= idMax ->
+         0 <= T <= TMax ->
+         vc [("id", id); ("to", to); ("T", T)] ∅ (Comm.denote (comm k))) ->
+      (forall T id to,
+         0 <= id <= idMax -> 0 <= to <= idMax ->
+         0 <= T <= TMax ->
+         sends_synth k idMax T id to ⊆ af_synth k idMax T id) ->
+      target ⊆ ⋃⎨bf_synth k idMax (TMax + 1) id, id ∈〚0, idMax〛⎬ ->
+      kexec k (trace_synth k idMax) idMax TMax.
+  Proof.
+    unfold kexec, trace_synth, beforeComp, afterComp; intuition.
+
+    + unfold bf_synth.
+      forward; omega.
+
+    + unfold bf_synth, af_synth.
+      eapply exec_equiv_r.
+      apply vc_sexec_correct. apply H; omega.
+      unfold computes_synth.
+      setoid_rewrite param_union_bin at 4; [|assumption].
+      apply bin_union_snd_third.
+
+    + simpl; unfold sends_synth.
+      eapply exec_equiv_r.
+      apply vc_sexec_correct. apply H0; omega.
+      apply bin_union_empty_l.
+
+    + simpl.
+      apply H1; omega.
+
+    + simpl. unfold bf_synth, af_synth.
+      replace (T + 1 - 1) with T by ring.
+      setoid_rewrite param_union_bin at 2; [|assumption].
+      apply equiv_incl.
+      setoid_rewrite bin_union_assoc; reflexivity.
+  Qed.
+
+  (** Handy tactic applying the main correctness result. *)
+  Tactic Notation "synthesize" "trace" :=
+    eexists; eapply trace_synth_correct; simpl.
 
 End Kern.

@@ -128,6 +128,16 @@ Lemma bin_union_assoc :
   forall U (A B C : set U), (A ∪ B) ∪ C ≡ A ∪ (B ∪ C).
 Proof. forward'. Qed.
 
+(** One more easy lemma about binary unions used in a manual proof. *)
+Lemma bin_union_snd_third :
+  forall U (A B C : set U), (A ∪ B) ∪ C ≡ (A ∪ C) ∪ B.
+Proof. forward; bruteforce. Qed.
+
+Lemma equiv_incl :
+  forall U (A B : set U), A ≡ B -> A ⊆ B.
+Proof. forward. Qed.
+
+
 (** ** Automation for set simplification. *)
 Tactic Notation "simplify" "sets" "with" reference(l) :=
   unfold l; simpl;

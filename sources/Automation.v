@@ -105,6 +105,7 @@ Ltac iter_exists l tac :=
 Ltac bruteforce' l :=
   simplify_hyps;
   match goal with
+    | [ |- _ ] => assumption
     | [ |- @subset _ _ _ ] => intro; bruteforce' l
 
     | [ |- @is_in _ _ (@singleton _ _) ] =>
