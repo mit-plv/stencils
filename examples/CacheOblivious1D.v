@@ -238,31 +238,39 @@ Proof. red; intro. eapply Vol_order_wf'; eauto. Defined.
 Arguments Zminus m n : simpl never.
 Arguments Zmult x y : simpl never.
 
-Definition Walk1 : { Tp : trapezoid | WF Tp } -> prog.
-  refine (Fix (R := Vol_order) _ (fun _ => prog) (fun Tp self => _)).
-  apply Vol_order_wf.
+Notation "[! e ]" := (exist _ e _).
 
-  destruct Tp as [[[[[[t0 t1] x0] v0] x1] v1] H].
-  refine
-    (let h := t1 - t0 in
-     if (Z_eq_dec h 1) then
-       For "x" From x0 To (x1 - 1) Do
-         Fire (t0 : aexpr, "x" : aexpr)
-     else
-       if (Z_lt_ge_dec (h * 4) ((x1 - x0) * 2 + (v1 - v0) * h)) then
-         let xm := ((x0 + x1) * 2 + (v0 + v1 + 2) * h) / 4 in
-         self (exist _ (t0, t1, x0, v0, xm, -1) _) _;;
-         self (exist _ (t0, t1, xm, -1, x1, v1) _) _
-       else
-         let s := h / 2 in
-         self (exist _ (t0, t0 + s, x0, v0, x1, v1) _) _;;
-              self (exist _ (t0 + s, t1, x0 + v0 * s, v0, x1 + v1 * s, v1) _) _)%prog;
-    simpl; unfold Vol_order, h in *; prove_Vol.
-  Grab Existential Variables.
-  unfold h in *; prove_WF.
-  unfold h in *; prove_WF.
-  unfold h in *; prove_WF.
-  unfold h in *; prove_WF.
+Infix "=?" := Z_eq_dec.
+Infix "<?" := Z_lt_ge_dec.
+
+Ltac substs := repeat match goal with
+                      | [ x : _ |- _ ] => subst x
+                      end.
+
+Definition Call {TP} (self : forall y : WF_trapezoid, Vol_order y TP -> prog)
+           (arg : trapezoid) {wf : WF arg}
+           {vol : (Z.abs_nat (Vol arg) < Z.abs_nat (Vol (proj1_sig TP)))%nat} :=
+  self (exist _ arg wf) vol.
+
+Definition Walk1 : { Tp : trapezoid | WF Tp } -> prog.
+  refine (Fix Vol_order_wf (fun _ => prog) (fun Tp self => _)).
+
+  destruct Tp as [[[[[[t0 t1] x0] v0] x1] v1] ].
+
+  refine (let h := t1 - t0 in
+    if h =? 1 then
+      For "x" From x0 To (x1 - 1) Do
+        Fire (t0 : aexpr, "x" : aexpr)
+    else
+      if (h * 4) <? ((x1 - x0) * 2 + (v1 - v0) * h) then
+        let xm := ((x0 + x1) * 2 + (v0 + v1 + 2) * h) / 4 in
+        Call self (t0, t1, x0, v0, xm, -1);;
+        Call self (t0, t1, xm, -1, x1, v1)
+      else
+        let s := h / 2 in
+        Call self (t0, t0 + s, x0, v0, x1, v1);;
+        Call self (t0 + s, t1, x0 + v0 * s, v0, x1 + v1 * s, v1))%prog;
+    clear self; abstract (substs; prove_Vol || prove_WF).
 Defined.
 
 Example WF_ex :
@@ -286,7 +294,7 @@ Proof.
                       (fun Tp => shape v (Walk1 Tp) ≡ trapezoid_shape Tp)
                       _); intros.
   destruct x as [[[[[[t0 t1] x0] v0] x1] v1] Hx].
-  unfold Walk1; rewrite Fix_eq; fold Walk1.
+  unfold Walk1; rewrite Fix_eq; fold Walk1; unfold Call in *.
   destruct (Z.eq_dec (t1 - t0) 1).
 
   - unfold trapezoid_shape; simpl.
