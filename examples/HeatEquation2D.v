@@ -94,27 +94,33 @@ Proof.
         exists (i1 + 1); forward; nia.
 Qed.
 
-Fact naive_st_correct_auto :
-  exec v C naive_st (C ∪ shape v naive_st).
+Fact naive_st_correct :
+  correct naive_st.
 Proof.
+  split.
 
-  symbolic execution.
+  (* Assertions do not fail. *)
 
-  unfold C, space; simplify sets with ceval.
+  - symbolic execution.
 
-  repeat (intro || split).
+    unfold C, space; simplify sets with ceval.
 
-  - decide i=0; [bruteforce | bruteforce' [i-1; i0; i1]].
+    repeat (intro || split).
 
-  - decide i=0; [bruteforce|].
-    decide i0=0; [bruteforce | bruteforce' [i-1; i0-1; i1]].
+    * decide i=0; [bruteforce | bruteforce' [i-1; i0; i1]].
 
-  - decide i=0; [bruteforce|].
-    decide i0=I; [bruteforce | bruteforce' [i-1; i0+1; i1]].
+    * decide i=0; [bruteforce|].
+      decide i0=0; [bruteforce | bruteforce' [i-1; i0-1; i1]].
 
-  - decide i=0; [bruteforce|].
-    decide i1=0; [bruteforce | bruteforce' [i-1; i0; i1-1]].
+    * decide i=0; [bruteforce|].
+      decide i0=I; [bruteforce | bruteforce' [i-1; i0+1; i1]].
 
-  - decide i=0; [bruteforce|].
-    decide i1=J; [bruteforce | bruteforce' [i-1; i0; i1+1]].
+    * decide i=0; [bruteforce|].
+      decide i1=0; [bruteforce | bruteforce' [i-1; i0; i1-1]].
+
+    * decide i=0; [bruteforce|].
+      decide i1=J; [bruteforce | bruteforce' [i-1; i0; i1+1]].
+
+  - unfold target; simpl; simplify sets with ceval.
+    forward. subst; forward. simpl; forward.
 Qed.
