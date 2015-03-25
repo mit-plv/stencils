@@ -37,14 +37,16 @@ Import P.
  *
  * (2) (COMM) Thread number "I" sends to thread I+1 the "right border" of
  * T[I]
- *   RB[I] = { u[t, 2NI + 2N-t-1] : 0 <= t < N }.
+ *   RB[I] = { u[t, 2NI + 2N-t-1] : 0 <= t < N }
+ *           U { u[t-1, 2NI + 2N-t-1] : 1 <= t < N }
  * and to thread I-1 the "left border" of T[I]
  *   LB[I] = { u[t, 2NI + t] : 0 <= t < N }
+ *           U { u[t-1, 2NI + t] : 1 <= t < N }.
  *
  * (3) (COMP) Thread number "I" computes the two "triangles"
  *   TL[I] = { u[t,x] : 0 <= t < N, 2N(I-1) + 2N-t <= x < 2NI + t }
  * and
- *   TR[I] = { u[t,x] : 0 <= t < N, 2NI + 2N-t <= x < 2N(I+1) + t}.
+ *   TR[I] = { u[t,x] : 0 <= t < N, 2NI + 2N-t <= x < 2N(I+1) + t }.
  *)
 
 (** Step 1, (COMP). *)
@@ -57,11 +59,15 @@ Definition my_comp0 :=
 Definition my_send :=
   (If "to" =? "id" - 1 Then
     For "t" From 0 To N-1 Do
-      Fire ("t":aexpr, N*2*"id" + "t")
+      Fire ("t":aexpr, N*2*"id" + "t");;
+    For "t" From 1 To N-1 Do
+      Fire ("t" - 1, N*2*"id" + "t")
    Else
      If "to" =? "id" + 1 Then
        For "t" From 0 To N-1 Do
-         Fire ("t":aexpr, N*2*"id" + N*2-"t"-1)
+         Fire ("t":aexpr, N*2*"id" + N*2-"t"-1);;
+       For "t" From 1 To N-1 Do
+         Fire ("t" - 1, N*2*"id" + N*2-"t"-1)
      Else
        Nop)%code.
 
@@ -177,10 +183,10 @@ Proof.
       destr_case (id =? id - 1 - 1).
       destr_case (id =? id - 1 + 1).
       forward.
-      exists (i-1); forward; try omega.
       simplify sets with ceval.
-      f_equal; try omega; nia.
-      
+      exists (i-1); forward; try omega.
+      lhs; forward; try omega; nia.
+
       (* Right edge of TL[id]. *)
       left. lhs; lhs; lhs; forward.
       exists 0; forward.
@@ -206,7 +212,15 @@ Proof.
 
       destr_case (id=?id-1-1); destr_case (id=?id-1+1).
       simplify sets with ceval; forward.
-      admit.
+      exists (i - 1); forward; try omega.
+      clear H11.
+      decide i0=(N*2*id - i).
+      rhs; forward.
+      exists i; forward; try omega. nia.
+      decide i0=(N*2*id - i + 1).
+      lhs; forward.
+      nia.
+      exfalso; omega.
 
       (* The rest of TL[id]. *)
       left. lhs; rhs; forward.
@@ -214,7 +228,19 @@ Proof.
       exists (i0-1); forward; try omega.
 
       (** COMP1, TL, last dependency (south-east). *)
-      admit.
+      destruct Z_le_gt_dec with (N*2*id + i - 2) i0.
+
+      (* The two right edges of TL[id]. *)
+      left; lhs; lhs; lhs; forward.
+      exists 0; forward.
+      unfold computes_synth; simpl; simplify sets with ceval; forward.
+      exists (i-1); forward; try omega.
+      exists (i0+1); forward; omega.
+
+      (* Interior of TL[id]. *)
+      left; lhs; rhs; forward.
+      exists (i-1); forward; try omega.
+      exists (i0+1); forward; omega.
 
       (** COMP1, TR, first dependency (south). *)
       assert (HT : N*2*id + N*2 - i = i0 \/ i0 = N*2*id + N*2 + i - 1
@@ -227,7 +253,7 @@ Proof.
       unfold computes_synth; simpl; simplify sets with ceval; forward.
       exists (i-1); forward; try omega.
       exists i0; forward; omega.
-      
+
       (* Right edge of TR[id]. *)
       decide id=(P-1); [right; unfold space; forward; unfold fst, snd in *; nia|].
 
@@ -240,7 +266,7 @@ Proof.
       forward.
       exists (i-1); forward; try omega.
       simplify sets with ceval.
-      f_equal; try omega; nia.
+      lhs; forward. nia.
 
       (* Interior of TR[id]. *)
       left; lhs; rhs; forward.
@@ -248,6 +274,12 @@ Proof.
       exists i0; forward; omega.
 
       (** COMP1, TR, second dependency (south-west). *)
+      destruct Z_le_gt_dec with i0 (N*2*id + N*2 - i + 1).
+
+      (* *)
+      admit.
+
+      (* *)
       admit.
 
       (** COMP1, TR, last dependency (south-east). *)
@@ -270,13 +302,19 @@ Proof.
     (* Left border *)
     exists 0; simpl; forward. (* Time step 0 *)
     exists x0; forward.
-    exists (snd x); rewrite H6; simpl; forward'; omega.
+    exists (snd x); rewrite H10; simpl; forward'; omega.
+    exists 0; simpl; forward. (* Time step 0 *)
+    exists (x1 - 1); forward; try omega.
+    exists (snd x); rewrite H11; simpl; forward'; try omega.
 
     destruct (to =? id + 1); simpl; forward.
     (* Right border *)
     exists 0; simpl; forward. (* Time step 0 *) 
     exists x0; forward.
-    exists (snd x); rewrite H9; simpl; forward'; try omega.
+    exists (snd x); rewrite H10; simpl; forward'; try omega.
+    exists 0; simpl; forward. (* Time step 0 *) 
+    exists (x1 - 1); forward; try omega.
+    exists (snd x); rewrite H11; simpl; forward'; try omega.
 
   (** Last goal is completeness: we computed all the cells we were supposed
    * to compute. *)
