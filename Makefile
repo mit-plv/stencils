@@ -15,7 +15,9 @@ EXAMPLES_MODULES := \
 	HeatEquation2D \
 	AmericanPutStockOptionPricing \
 	PairwiseSequenceAlignment \
-	CacheOblivious1D
+	CacheOblivious1D \
+	ThreePointNaive \
+	ThreePoint
 EXAMPLES_VS  := $(EXAMPLES_MODULES:%=examples/%.v)
 EXAMPLES_VOS := $(EXAMPLES_MODULES:%=examples/%.vo)
 

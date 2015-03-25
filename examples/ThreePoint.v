@@ -115,6 +115,14 @@ Proof.
   firstorder.
 Qed.
 
+Ltac destr_case b :=
+  let bb := fresh in
+  let Hbb := fresh in
+  remember b as bb eqn:Hbb;
+  symmetry in Hbb; destruct bb;
+  (apply Z.eqb_eq in Hbb || apply Z.eqb_neq in Hbb);
+  try (exfalso; omega).
+
 (** Let's now prove the correctness of this kernel. *)
 Theorem my_code_correct :
   kcorrect my_code (P-1) 1.
@@ -166,14 +174,6 @@ Proof.
       exists (id-1); forward; try omega.
       unfold sends_synth; simpl; forward.
 
-      Ltac destr_case b :=
-        let bb := fresh in
-        let Hbb := fresh in
-        remember b as bb eqn:Hbb;
-        symmetry in Hbb; destruct bb;
-        (apply Z.eqb_eq in Hbb || apply Z.eqb_neq in Hbb);
-        try (exfalso; omega).
-
       destr_case (id =? id - 1 - 1).
       destr_case (id =? id - 1 + 1).
       forward.
@@ -194,7 +194,24 @@ Proof.
       exists i0; forward; omega.
 
       (** COMP1, TL, second dependency (south-west). *)
+      destruct Z_le_gt_dec with i0 (N*2*id - i + 1).
+
+      (* The two left edges of TL[id]. *)
+      decide id=0; [right; unfold space; forward; unfold fst, snd in *; omega|].
+
+      left; lhs; lhs; rhs; forward.
+      exists 0; forward.
+      exists (id - 1); forward; try omega.
+      unfold sends_synth; simpl; forward.
+
+      destr_case (id=?id-1-1); destr_case (id=?id-1+1).
+      simplify sets with ceval; forward.
       admit.
+
+      (* The rest of TL[id]. *)
+      left. lhs; rhs; forward.
+      exists (i-1); forward; try omega.
+      exists (i0-1); forward; try omega.
 
       (** COMP1, TL, last dependency (south-east). *)
       admit.
