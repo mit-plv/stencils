@@ -59,6 +59,16 @@ Module Prog (D : DOMAIN) (Pb : PROBLEM D).
         ⋃⎨shape ((x,i) :: v) q, i ∈〚aeval v a, aeval v b〛⎬
     end.
 
+  Fixpoint assertless (p : prog) : Prop :=
+    match p with
+      | Nop => True
+      | Flag c => True
+      | If B p1 p2 => assertless p1 /\ assertless p2
+      | Seq p1 p2 => assertless p1 /\ assertless p2
+      | Assert c => False
+      | For x a b q => assertless q
+    end.
+
   Fixpoint vc (v : vars) (C : array) (p : prog) : Prop :=
     match p with
       | Nop => True
@@ -93,6 +103,51 @@ Module Prog (D : DOMAIN) (Pb : PROBLEM D).
     forall v C p C1 C2,
       exec v C p C1 -> C1 ≡ C2 -> exec v C p C2.
   Proof. intros; eapply eEquiv; [reflexivity| |]; eassumption. Qed.
+
+  (** The following result [prog_total] is commented out because it is not
+   * used in the framework. It is a proof that assertion-free programs
+   * terminate, which implies that the Halting Problem corresponding to
+   * our DSL is decidable. In particular, it proves that this language is
+   * not Turing-complete. *)
+  (*
+  Lemma bin_union_left_reg :
+    forall U (A B C : set U), B ≡ C -> A ∪ B ≡ A ∪ C. 
+  Proof.
+    forward'.
+  Qed.
+
+  Lemma prog_total :
+    forall p, assertless p -> forall v C, exec v C p (C ∪ shape v p).
+  Proof.
+    induction p; simpl; intros.
+    apply exec_equiv_r with C.
+    constructor.
+    forward. lhs; forward.
+    constructor.
+    destruct H as [H1 H2]; specialize (IHp1 H1); specialize (IHp2 H2).
+    constructor.
+    destruct (beval v b).
+    now apply IHp1.
+    now apply IHp2.
+    econstructor.
+    destruct H as [H1 H2].
+    now apply IHp1.
+    apply exec_equiv_r with ((C ∪ shape v p1) ∪ shape v p2).
+    now apply IHp2.
+    forward'.
+    inversion H.
+    constructor; intros.
+    apply exec_equiv_r
+    with ((C ∪ ⋃ ⎨ (shape ((s, k) :: v) p),
+           k ∈  〚 aeval v a, i-1 〛⎬) ∪ shape ((s,i) :: v) p).
+    apply IHp.
+    assumption.
+    rewrite bin_union_assoc.
+    apply bin_union_left_reg.
+    symmetry. apply param_union_bin.
+    apply H0.
+  Qed.
+*)
 
   (** Main correctness result.
    *
