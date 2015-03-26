@@ -16,6 +16,7 @@ EXAMPLES_MODULES := \
 	AmericanPutStockOptionPricing \
 	PairwiseSequenceAlignment \
 	CacheOblivious1D \
+	Utils \
 	ThreePointNaive \
 	ThreePoint
 EXAMPLES_VS  := $(EXAMPLES_MODULES:%=examples/%.v)

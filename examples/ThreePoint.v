@@ -1,5 +1,6 @@
 Require Import StLib.Main StLib.Kernels.
 Require Import Psatz.
+Require Import Utils.
 
 Parameters P N : Z.
 Axiom Ngt0 : N > 0.
@@ -96,38 +97,6 @@ Definition my_comp :=
 (** And here is the kernel! *)
 Definition my_code :=
   makeKernel my_comp my_send.
-
-Ltac to_ctx H := generalize H; intro.
-
-(** The following two arithmetic lemma will be used in the proof of
- * correctness. *)
-Lemma Z_div_mod_spec :
-  forall a b,
-    b > 0 ->
-    0 <= a - b * (a / b) < b.
-Proof.
-  intros.
-  to_ctx (Z_div_mod_eq a b H);
-  to_ctx (Z_mod_lt a b H);
-  omega.
-Qed.
-
-Lemma seg_dec :
-  forall a b n, a <= n <= b \/ n < a \/ n > b.
-Proof.
-  intros.
-  destruct Z_le_gt_dec with a n;
-    destruct Z_le_gt_dec with n b;
-  firstorder.
-Qed.
-
-Ltac destr_case b :=
-  let bb := fresh in
-  let Hbb := fresh in
-  remember b as bb eqn:Hbb;
-  symmetry in Hbb; destruct bb;
-  (apply Z.eqb_eq in Hbb || apply Z.eqb_neq in Hbb);
-  try (exfalso; omega).
 
 (** Let's now prove the correctness of this kernel. *)
 Theorem my_code_correct :
@@ -276,14 +245,40 @@ Proof.
       (** COMP1, TR, second dependency (south-west). *)
       destruct Z_le_gt_dec with i0 (N*2*id + N*2 - i + 1).
 
-      (* *)
-      admit.
+      (* Left edge of TR[id]. *)
+      left; lhs; lhs; lhs; lhs; forward.
+      exists 0; forward.
+      unfold computes_synth; simpl; simplify sets with ceval; forward.
+      exists (i-1); forward; try omega.
+      exists (i0-1); forward; try omega.
 
-      (* *)
-      admit.
+      (* Interior of TR[id]. *)
+      left; lhs; rhs; forward.
+      exists (i-1); forward; try omega.
+      exists (i0-1); forward; try omega.
 
       (** COMP1, TR, last dependency (south-east). *)
-      admit.
+      destruct Z_le_gt_dec with (N*2*id + N*2 + i - 2) i0.
+
+      (* Right edge of TR[id]. *)
+      decide id=(P-1); [right; unfold space; forward; unfold fst, snd in *; nia|].
+
+      left; lhs; lhs; lhs; rhs; forward.
+      exists 0; forward.
+      exists (id+1); forward; try omega.
+      unfold sends_synth; simpl; simplify sets with ceval.
+      destr_case (id =? id + 1 - 1); forward.
+      exists (i-1); forward; try omega.
+      clear H10; decide i0=(N*2*id + N*2 + i - 1).
+
+      rhs; forward.
+      exists i; forward; try omega. nia.
+      lhs; forward; nia.
+
+      (* Interior of TR[id]. *)
+      left; lhs; rhs; forward.
+      exists (i-1); forward; try omega.
+      exists (i0+1); forward; try omega.
 
       omega.
 
