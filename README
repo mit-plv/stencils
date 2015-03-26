@@ -32,7 +32,9 @@ The project is organized as follows:
 │  ├── AmericanPutStockOptionPricing.v
 │  ├── CacheOblivious1D.v
 │  ├── HeatEquation2D.v
-│  └── PairwiseSequenceAlignment.v
+│  ├── PairwiseSequenceAlignment.v
+│  ├── ThreePointNaive.v
+│  └── ThreePoint.v
 └─ sources
    ├── Automation.v          Automation support for stencil code
    │                           correctness proofs.
