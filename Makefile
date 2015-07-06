@@ -12,13 +12,15 @@ SOURCES_VS  := $(SOURCES_MODULES:%=sources/%.v)
 SOURCES_VOS := $(SOURCES_MODULES:%=sources/%.vo)
 
 EXAMPLES_MODULES := \
-	HeatEquation2D \
-	AmericanPutStockOptionPricing \
-	PairwiseSequenceAlignment \
-	CacheOblivious1D \
+	HeatEquation2D_Seq \
+	PutStockOption_Seq \
+	PutStockOption_Distr_Naive \
+	PutStockOption_Distr_Optimized \
+	PairwiseSeqAlign_Seq \
+	CacheOblivious1D_Optimal \
 	Utils \
-	ThreePointNaive \
-	ThreePoint
+	Jacobi1D_Distr_Naive \
+	Jacobi1D_Distr_Optimized
 EXAMPLES_VS  := $(EXAMPLES_MODULES:%=examples/%.v)
 EXAMPLES_VOS := $(EXAMPLES_MODULES:%=examples/%.vo)
 
